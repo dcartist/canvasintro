@@ -1,0 +1,2715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas LTI Plugins and Custom Modals – Developer Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #f9f7f4;
+    --surface:     #ffffff;
+    --surface2:    #f2efe9;
+    --border:      #d4cfc6;
+    --border-dark: #9e9890;
+    --text:        #1a1612;
+    --muted:       #4a453e;
+    --link:        #0050a0;
+    --link-visited:#5c0099;
+    --accent:      #b84000;
+    --accent2:     #0050a0;
+    --accent3:     #5c0099;
+    --green-bg:    #e6f4ea;  --green-text:  #1a5c2a;
+    --yellow-bg:   #fff8e1;  --yellow-text: #6b4800;
+    --info-bg:     #e8f0fe;  --info-text:   #0d3580;
+    --warn-bg:     #fff3e0;  --warn-text:   #7a3500;
+    --code-bg:     #f0ede8;  --code-text:   #1a1612;
+    --radius: 6px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .skip-link {
+    position: absolute; top: -100%; left: 0;
+    background: var(--accent2); color: #fff;
+    padding: .75rem 1.25rem; font-family: 'Source Serif 4', serif;
+    font-size: 1rem; text-decoration: none;
+    border-radius: 0 0 var(--radius) 0; z-index: 9999;
+  }
+  .skip-link:focus { top: 0; }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.0625rem; line-height: 1.75;
+    min-height: 100vh;
+  }
+  .page-wrap { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+
+  .site-header {
+    padding: 3rem 0 2.5rem;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); border: 1.5px solid var(--accent);
+    padding: 3px 10px; border-radius: 3px; margin-bottom: 1.25rem;
+  }
+  h1 { font-size: clamp(1.8rem,4vw,2.6rem); font-weight: 700; line-height: 1.2; margin-bottom: .75rem; }
+  .lead { font-size: 1.05rem; color: var(--muted); max-width: 580px; line-height: 1.7; }
+
+  /* Tabs */
+  .tab-nav-wrap { border-bottom: 2px solid var(--border); margin-bottom: 2.5rem; }
+  .tab-nav-inner {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+  .tab-nav-arrow {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; flex-shrink: 0;
+    background: var(--surface2);
+    border: none; border-bottom: 2px solid var(--border);
+    color: var(--muted); font-size: 1rem; cursor: pointer;
+    transition: background .15s, color .15s;
+    position: relative; bottom: -2px;
+  }
+  .tab-nav-arrow:hover:not(:disabled) { background: var(--surface); color: var(--text); }
+  .tab-nav-arrow:disabled { opacity: .3; cursor: not-allowed; }
+  .tab-nav-arrow:focus-visible { outline: 3px solid var(--accent2); outline-offset: -2px; z-index: 1; }
+  .tab-nav-arrow.arr-left  { border-right: 1px solid var(--border); border-radius: 0; }
+  .tab-nav-arrow.arr-right { border-left:  1px solid var(--border); border-radius: 0; }
+
+  .tab-nav-scroll { overflow-x: auto; flex: 1; }
+  .tab-nav-scroll::-webkit-scrollbar { height: 0; }
+
+  [role="tablist"] { display: flex; list-style: none; min-width: max-content; }
+
+  .tab-nav-counter {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 .85rem;
+    font-family: 'JetBrains Mono', monospace; font-size: .68rem;
+    color: var(--muted); white-space: nowrap; flex-shrink: 0;
+    border-bottom: 2px solid var(--border);
+    position: relative; bottom: -2px;
+    border-left: 1px solid var(--border);
+  }
+  [role="tab"] {
+    font-family: 'JetBrains Mono', monospace; font-size: .8rem;
+    color: var(--muted); background: none; border: none;
+    border-bottom: 3px solid transparent;
+    padding: .8rem 1.25rem; cursor: pointer; white-space: nowrap;
+    line-height: 1.4; transition: color .15s, border-color .15s;
+    position: relative; bottom: -2px;
+  }
+  [role="tab"]:hover { color: var(--text); }
+  [role="tab"][aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+  [role="tab"]:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; border-radius: 3px 3px 0 0; }
+
+  [role="tabpanel"] { display: none; }
+  [role="tabpanel"].active { display: block; animation: panelIn .2s ease; }
+  @keyframes panelIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  @media (prefers-reduced-motion: reduce) { [role="tabpanel"].active { animation: none; } }
+
+  .section-eyebrow {
+    font-family: 'JetBrains Mono', monospace; font-size: .7rem;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: .35rem;
+  }
+  h2 { font-size: 1.6rem; font-weight: 700; color: var(--text); margin-bottom: .75rem; }
+  h3 {
+    font-size: 1.1rem; font-weight: 700; color: var(--text);
+    margin: 2.25rem 0 .6rem; padding-left: .9rem;
+    border-left: 3px solid var(--accent2);
+  }
+  p { color: var(--muted); margin-bottom: 1rem; font-size: 1rem; }
+  strong { color: var(--text); }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:visited { color: var(--link-visited); }
+  a:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; border-radius: 2px; }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+    gap: 1rem; margin: 1.5rem 0;
+  }
+  .card-item { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; }
+  .card-label { font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent3); margin-bottom: .35rem; display: block; }
+  .card-item p { font-size: .9rem; margin: 0; }
+
+  .stack-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); margin: 1.25rem 0; overflow: hidden; }
+  .stack-row { display: flex; align-items: baseline; gap: 1rem; padding: .7rem 1.25rem; border-bottom: 1px solid var(--border); }
+  .stack-row:last-child { border-bottom: none; }
+  .stack-layer { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--muted); min-width: 82px; flex-shrink: 0; }
+  .stack-value { font-size: .95rem; color: var(--text); }
+
+  .callout { display: flex; gap: .85rem; padding: .95rem 1.15rem; border-radius: var(--radius); margin: 1.25rem 0; font-size: .93rem; line-height: 1.6; }
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; line-height: 1.55; }
+  .callout.info { background: var(--info-bg); border: 1.5px solid #b3c9f8; color: var(--info-text); }
+  .callout.warn { background: var(--warn-bg); border: 1.5px solid #f5c07a; color: var(--warn-text); }
+
+  .code-wrap { background: var(--code-bg); border: 1.5px solid var(--border); border-radius: var(--radius); margin: 1.1rem 0; overflow: hidden; }
+  .code-header { display: flex; align-items: center; justify-content: space-between; padding: .5rem 1rem; background: #e8e4de; border-bottom: 1px solid var(--border); }
+  .code-lang { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+  .copy-btn { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--muted); background: var(--surface); border: 1.5px solid var(--border-dark); padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: all .15s; min-width: 60px; }
+  .copy-btn:hover { color: var(--text); border-color: var(--accent2); }
+  .copy-btn:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; }
+  .copy-btn.copied { color: var(--green-text); border-color: var(--green-text); }
+  pre { padding: 1.1rem; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: .83rem; line-height: 1.65; color: var(--code-text); tab-size: 2; }
+
+  .kw     { color: #7a00a8; }
+  .fn     { color: #004fa8; }
+  .str    { color: #1a6b00; }
+  .cm     { color: #5a5550; font-style: italic; }
+  .num    { color: #9b3800; }
+  .prop   { color: #006060; }
+  .tag-hl { color: #a00028; }
+  .attr   { color: #6b4400; }
+
+  code { font-family: 'JetBrains Mono', monospace; font-size: .83em; background: var(--surface2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 3px; color: var(--accent3); }
+
+  .table-wrap { overflow-x: auto; margin: 1.1rem 0; border: 1.5px solid var(--border); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; background: var(--surface); }
+  caption { font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: left; padding: .5rem 1rem .25rem; caption-side: top; }
+  th { text-align: left; padding: .6rem 1rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text); background: var(--surface2); border-bottom: 2px solid var(--border); }
+  td { padding: .65rem 1rem; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; line-height: 1.55; }
+  td:first-child { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--accent2); white-space: nowrap; font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) td { background: #faf8f5; }
+
+  .option-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.4rem 1.4rem 1.7rem; margin: 1.25rem 0; position: relative; }
+  .option-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: var(--radius) 0 0 var(--radius); }
+  .opt-a::before { background: var(--accent); }
+  .opt-b::before { background: var(--accent2); }
+  .opt-c::before { background: var(--accent3); }
+  .option-num { font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; margin-bottom: .3rem; display: block; }
+  .opt-a .option-num { color: var(--accent); }
+  .opt-b .option-num { color: var(--accent2); }
+  .opt-c .option-num { color: var(--accent3); }
+  .option-card h3 { border-left: none; padding-left: 0; font-size: 1.05rem; margin: 0 0 .6rem; }
+  .option-card p { font-size: .93rem; }
+
+  .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: .67rem; padding: 1px 7px; border-radius: 3px; margin-left: .5rem; vertical-align: middle; font-weight: 500; }
+  .badge-green  { background: var(--green-bg);  color: var(--green-text);  border: 1px solid #a8d5b0; }
+  .badge-yellow { background: var(--yellow-bg); color: var(--yellow-text); border: 1px solid #f0cc6a; }
+
+  /* ── App structure demo ──────────────────────────────────── */
+  .app-shell {
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .82rem;
+  }
+
+  .app-titlebar {
+    background: #1e2030;
+    color: #cdd6f4;
+    padding: .5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    font-size: .75rem;
+    letter-spacing: .04em;
+  }
+  .titlebar-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .titlebar-dots { display: flex; gap: 6px; }
+  .dot-red    { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green  { background: #28c840; }
+  .titlebar-label { color: #6c7086; }
+
+  .app-body {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 520px;
+    background: var(--surface);
+  }
+
+  /* File tree sidebar */
+  .file-tree {
+    background: #f5f3ef;
+    border-right: 1.5px solid var(--border);
+    padding: .75rem 0;
+    overflow-y: auto;
+  }
+
+  .tree-root { padding: .3rem 1rem .3rem 1.25rem; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .28rem 1rem .28rem 1.25rem;
+    font-size: .8rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: background .12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    white-space: nowrap;
+    border-radius: 0;
+  }
+  .tree-item:hover { background: #eae7e0; }
+  .tree-item.active { background: #e2ddd6; color: var(--accent2); font-weight: 500; }
+  .tree-item:focus-visible { outline: 3px solid var(--accent2); outline-offset: -2px; }
+
+  .tree-indent1 { padding-left: 2rem; }
+  .tree-indent2 { padding-left: 3rem; }
+  .tree-indent3 { padding-left: 4rem; }
+
+  .tree-icon { width: 14px; height: 14px; flex-shrink: 0; }
+  .tree-folder-icon { color: #d4970a; }
+  .tree-file-js     { color: #d4aa00; }
+  .tree-file-json   { color: #4a9eff; }
+  .tree-file-html   { color: #e34c26; }
+  .tree-file-md     { color: #7a8098; }
+  .tree-file-env    { color: #4e9a57; }
+
+  .tree-divider { height: 1px; background: var(--border); margin: .4rem 1rem; }
+
+  /* Code pane */
+  .code-pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pane-tabs {
+    display: flex;
+    background: #f0ede8;
+    border-bottom: 1.5px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .pane-tab {
+    padding: .45rem 1.1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .76rem;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .12s;
+    position: relative;
+    bottom: -1.5px;
+  }
+  .pane-tab:hover { color: var(--text); }
+  .pane-tab.active { color: var(--text); border-bottom-color: var(--accent2); background: var(--surface); }
+  .pane-tab:focus-visible { outline: 3px solid var(--accent2); outline-offset: -2px; }
+
+  .pane-content { flex: 1; overflow: auto; }
+
+  .code-file { display: none; }
+  .code-file.active { display: block; }
+
+  .line-nums pre {
+    counter-reset: line;
+    padding: 1rem;
+  }
+  .line-nums pre span.line {
+    display: block;
+    counter-increment: line;
+  }
+  .line-nums pre span.line::before {
+    content: counter(line);
+    display: inline-block;
+    width: 28px;
+    margin-right: 12px;
+    text-align: right;
+    color: #aaa;
+    font-size: .76rem;
+    user-select: none;
+  }
+
+  .pane-description {
+    padding: .75rem 1.1rem;
+    background: var(--info-bg);
+    border-bottom: 1px solid #b3c9f8;
+    font-size: .82rem;
+    color: var(--info-text);
+    line-height: 1.5;
+    flex-shrink: 0;
+  }
+
+  /* LTI flow diagram (below the code shell) */
+  .flow-section { margin-top: 2.5rem; }
+
+  /* ── Canvas walkthrough stepper ─────────────────────── */
+  .stepper-wrap { margin: 1.5rem 0; }
+
+  .step-progress {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    padding-bottom: .25rem;
+  }
+  .step-pip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .35rem;
+    flex: 1;
+    min-width: 80px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0 .25rem;
+  }
+  .step-pip:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; border-radius: 4px; }
+  .pip-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface2); border: 2px solid var(--border-dark);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: .72rem;
+    color: var(--muted); font-weight: 500;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .step-pip.active .pip-dot   { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .step-pip.done .pip-dot     { background: var(--green-text); border-color: var(--green-text); color: #fff; }
+  .pip-label { font-size: .7rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); text-align: center; line-height: 1.3; }
+  .step-pip.active .pip-label { color: var(--accent2); font-weight: 500; }
+  .step-pip.done .pip-label   { color: var(--green-text); }
+  .pip-line { flex: 1; height: 2px; background: var(--border); margin-bottom: 1.5rem; min-width: 16px; }
+  .pip-line.done { background: var(--green-text); }
+
+  .step-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .step-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1.5px solid var(--border);
+    display: flex; align-items: baseline; gap: .75rem;
+  }
+  .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent2); flex-shrink: 0;
+  }
+  .step-title { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+
+  .step-body { display: none; }
+  .step-body.active { display: block; }
+
+  /* Canvas UI mockup frames */
+  .canvas-frame {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 1rem 1.25rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+  }
+  .cf-topbar {
+    background: #fff;
+    border-bottom: 1px solid #c7cdd1;
+    padding: .4rem .75rem;
+    display: flex; align-items: center; gap: .5rem;
+    font-size: 12px; color: #556068;
+  }
+  .cf-topbar-logo { font-weight: 700; color: #e66000; font-size: 13px; letter-spacing: -.5px; }
+  .cf-breadcrumb { color: #0770a3; }
+  .cf-breadcrumb + .cf-breadcrumb::before { content: ' › '; color: #556068; }
+
+  .cf-body { display: flex; min-height: 260px; }
+  .cf-sidebar {
+    width: 56px; background: #394b58; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: .5rem 0; gap: 2px;
+  }
+  .cf-nav-item {
+    width: 44px; height: 44px; border-radius: 6px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2px; cursor: pointer;
+    font-size: 9px; color: #c0cdd6;
+  }
+  .cf-nav-item svg { width: 18px; height: 18px; }
+  .cf-nav-item.active-nav { background: rgba(255,255,255,.15); color: #fff; }
+  .cf-nav-item.highlight-nav { background: rgba(231,100,0,.25); color: #ffa066; }
+
+  .cf-content { flex: 1; padding: 1rem; background: #f5f5f5; overflow: hidden; }
+
+  .cf-page-title { font-size: 18px; font-weight: 600; color: #2d3b45; margin-bottom: .75rem; }
+  .cf-page-sub   { font-size: 13px; color: #556068; margin-bottom: 1rem; }
+
+  /* Tables inside mockup */
+  .cf-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; font-size: 12px; border: 1px solid #c7cdd1; }
+  .cf-table th { background: #f5f5f5; padding: .4rem .75rem; text-align: left; font-weight: 600; color: #556068; border-bottom: 1px solid #c7cdd1; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .cf-table td { padding: .4rem .75rem; border-bottom: 1px solid #e8e8e8; color: #2d3b45; vertical-align: middle; }
+  .cf-table tr:last-child td { border-bottom: none; }
+  .cf-table tr.highlight-row td { background: #fff8e6; }
+
+  /* Buttons inside mockup */
+  .cf-btn-primary { background: #0770a3; color: #fff; border: none; padding: .3rem .85rem; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .cf-btn-secondary { background: #fff; color: #0770a3; border: 1px solid #0770a3; padding: .3rem .85rem; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .cf-btn-danger { background: #c63527; color: #fff; border: none; padding: .3rem .85rem; border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+  /* Toggle pill */
+  .cf-toggle { display: inline-flex; align-items: center; gap: .4rem; }
+  .cf-toggle-track { width: 36px; height: 20px; border-radius: 10px; position: relative; transition: background .2s; }
+  .cf-toggle-track.off { background: #c7cdd1; }
+  .cf-toggle-track.on  { background: #0770a3; }
+  .cf-toggle-thumb { position: absolute; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .cf-toggle-track.off .cf-toggle-thumb { left: 2px; }
+  .cf-toggle-track.on  .cf-toggle-thumb { left: 18px; }
+  .cf-status-on  { display: inline-block; padding: 1px 8px; background: #e6f4ea; color: #1a5c2a; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .cf-status-off { display: inline-block; padding: 1px 8px; background: #f5f5f5; color: #556068; border-radius: 10px; font-size: 11px; }
+
+  /* Form fields */
+  .cf-form-group { margin-bottom: .6rem; }
+  .cf-label { display: block; font-size: 11px; font-weight: 600; color: #556068; margin-bottom: .2rem; text-transform: uppercase; letter-spacing: .04em; }
+  .cf-input { width: 100%; padding: .3rem .5rem; border: 1px solid #c7cdd1; border-radius: 4px; font-size: 12px; color: #2d3b45; background: #fff; }
+  .cf-input.highlight { border-color: #0770a3; box-shadow: 0 0 0 2px rgba(7,112,163,.2); }
+  .cf-textarea { width: 100%; padding: .4rem .5rem; border: 1px solid #c7cdd1; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #2d3b45; background: #fff; resize: none; }
+
+  /* Chips / breadcrumb path */
+  .cf-path { display: flex; align-items: center; gap: .3rem; font-size: 11px; color: #556068; margin-bottom: .75rem; }
+  .cf-path-step { background: #e8f0fe; color: #0d3580; padding: 2px 8px; border-radius: 3px; font-weight: 600; }
+  .cf-path-arrow { color: #b0b4c8; }
+
+  /* Course left nav mockup */
+  .cf-course-nav { width: 180px; background: #fff; border-right: 1px solid #c7cdd1; padding: .5rem 0; flex-shrink: 0; }
+  .cf-course-nav-item { padding: .35rem .75rem; font-size: 12px; color: #0770a3; cursor: pointer; display: flex; align-items: center; gap: .4rem; }
+  .cf-course-nav-item:hover { background: #f0f0f0; }
+  .cf-course-nav-item.active-course { background: #e8f0fe; color: #0d3580; font-weight: 600; border-left: 3px solid #0770a3; padding-left: calc(.75rem - 3px); }
+  .cf-course-nav-item.new-item { color: #e66000; font-weight: 600; }
+
+  /* RCE toolbar mockup */
+  .cf-rce-toolbar { background: #f5f5f5; border: 1px solid #c7cdd1; border-radius: 4px 4px 0 0; padding: .3rem .5rem; display: flex; gap: 2px; flex-wrap: wrap; }
+  .cf-rce-btn { padding: .2rem .45rem; border-radius: 3px; border: none; background: transparent; font-size: 12px; color: #2d3b45; cursor: pointer; font-weight: 600; }
+  .cf-rce-btn:hover { background: #e0e0e0; }
+  .cf-rce-btn.highlight-rce { background: #e66000; color: #fff; border-radius: 3px; }
+  .cf-rce-sep { width: 1px; background: #c7cdd1; margin: 2px 3px; }
+  .cf-rce-body { border: 1px solid #c7cdd1; border-top: none; border-radius: 0 0 4px 4px; padding: .75rem; background: #fff; font-size: 13px; color: #2d3b45; min-height: 60px; }
+
+  /* LTI tool iframe mockup */
+  .cf-iframe { background: #fff; border: 1px solid #c7cdd1; border-radius: 4px; padding: 1rem; margin-top: .5rem; }
+  .cf-iframe-bar { background: #f5f5f5; border-bottom: 1px solid #c7cdd1; padding: .25rem .75rem; font-size: 10px; color: #888; font-family: 'JetBrains Mono', monospace; border-radius: 4px 4px 0 0; margin: -1rem -1rem .75rem; }
+
+  /* Callout arrow annotation */
+  .cf-annotation { display: flex; align-items: flex-start; gap: .5rem; margin: .5rem 1.25rem; font-size: .82rem; color: var(--accent); }
+  .cf-annotation::before { content: '↑'; font-size: 1rem; line-height: 1.3; flex-shrink: 0; }
+
+  /* Step nav buttons */
+  .step-nav { display: flex; justify-content: space-between; padding: .85rem 1.25rem; border-top: 1.5px solid var(--border); background: var(--surface2); }
+  .step-nav-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: .78rem;
+    padding: .45rem 1.1rem; border-radius: var(--radius);
+    cursor: pointer; transition: all .15s;
+    border: 1.5px solid var(--border-dark);
+    background: var(--surface); color: var(--muted);
+  }
+  .step-nav-btn:hover { color: var(--text); border-color: var(--accent2); }
+  .step-nav-btn:focus-visible { outline: 3px solid var(--accent2); outline-offset: 2px; }
+  .step-nav-btn.primary { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+  .step-nav-btn.primary:hover { background: #003d80; }
+  .step-nav-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .step-desc { padding: .85rem 1.25rem; font-size: .9rem; color: var(--muted); border-top: 1px solid var(--border); }
+  .step-desc strong { color: var(--text); }
+
+  /* ── Apply plugin checklist ──────────────────────────── */
+  .checklist { list-style: none; margin: 1.5rem 0; }
+  .checklist > li { margin-bottom: 1.25rem; }
+
+  .check-step {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 0 1rem;
+    align-items: start;
+  }
+  .check-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent2); color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .82rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: .15rem;
+  }
+  .check-body { }
+  .check-title {
+    font-size: 1rem; font-weight: 700; color: var(--text);
+    margin-bottom: .3rem; line-height: 1.4;
+  }
+  .check-desc { font-size: .93rem; color: var(--muted); margin-bottom: .6rem; line-height: 1.6; }
+  .check-desc strong { color: var(--text); }
+
+  .check-path {
+    display: inline-flex; align-items: center; flex-wrap: wrap;
+    gap: .2rem; margin-bottom: .6rem;
+    font-family: 'JetBrains Mono', monospace; font-size: .75rem;
+  }
+  .check-path-seg {
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 3px; color: var(--text); white-space: nowrap;
+  }
+  .check-path-sep { color: var(--muted); font-size: .85rem; }
+
+  .check-note {
+    display: flex; gap: .6rem; align-items: flex-start;
+    background: var(--info-bg); border: 1px solid #b3c9f8;
+    color: var(--info-text); border-radius: var(--radius);
+    padding: .55rem .85rem; font-size: .83rem; line-height: 1.5;
+    margin-top: .5rem;
+  }
+  .check-note-icon { flex-shrink: 0; font-size: .95rem; line-height: 1.5; }
+  .check-warn {
+    background: var(--warn-bg); border-color: #f5c07a; color: var(--warn-text);
+  }
+  .check-success {
+    background: var(--green-bg); border-color: #a8d5b0; color: var(--green-text);
+  }
+
+  .where-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace; font-size: .65rem;
+    letter-spacing: .08em; text-transform: uppercase; padding: 1px 7px;
+    border-radius: 3px; margin-right: .4rem; vertical-align: middle;
+    font-weight: 600;
+  }
+  .where-canvas  { background: #fce8d8; color: #8a3000; border: 1px solid #f0b088; }
+  .where-code    { background: #e8f0fe; color: #0d3580; border: 1px solid #b3c9f8; }
+  .where-browser { background: var(--green-bg); color: var(--green-text); border: 1px solid #a8d5b0; }
+
+  .divider-line { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  .phase-heading {
+    display: flex; align-items: center; gap: .75rem;
+    margin: 2rem 0 1rem;
+  }
+  .phase-label {
+    font-family: 'JetBrains Mono', monospace; font-size: .68rem;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--surface); background: var(--accent);
+    padding: 3px 10px; border-radius: 3px; white-space: nowrap;
+  }
+  .phase-line { flex: 1; height: 1px; background: var(--border); }
+
+  .result-box {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .75rem 1.5rem;
+  }
+  .result-item { display: flex; flex-direction: column; gap: .2rem; }
+  .result-label { font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .result-value { font-size: .9rem; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Two-approaches comparison ───────────────────────── */
+  .approach-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin: 1.5rem 0;
+  }
+  @media (max-width: 640px) { .approach-grid { grid-template-columns: 1fr; } }
+
+  .approach-card {
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .approach-card.lightweight { border-color: var(--green-text); }
+  .approach-card.fullserver  { border-color: var(--accent2); }
+
+  .approach-head {
+    padding: .75rem 1.1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .78rem; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .lightweight .approach-head { background: var(--green-bg); color: var(--green-text); }
+  .fullserver  .approach-head { background: var(--info-bg);  color: var(--info-text);  }
+
+  .approach-body { padding: 1rem 1.1rem; background: var(--surface); }
+  .approach-body p { font-size: .9rem; margin-bottom: .5rem; }
+  .approach-list { list-style: none; margin: .5rem 0 0; }
+  .approach-list li {
+    font-size: .88rem; color: var(--muted);
+    padding: .25rem 0; display: flex; gap: .5rem; align-items: flex-start;
+  }
+  .approach-list li::before { content: '•'; color: var(--border-dark); flex-shrink: 0; }
+
+  .decision-box {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .decision-row {
+    display: flex; gap: 1rem; align-items: baseline;
+    padding: .5rem 0; border-bottom: 1px solid var(--border);
+    font-size: .9rem;
+  }
+  .decision-row:last-child { border-bottom: none; }
+  .decision-q { color: var(--muted); flex: 1; }
+  .decision-a {
+    font-family: 'JetBrains Mono', monospace; font-size: .78rem;
+    padding: 2px 8px; border-radius: 3px; white-space: nowrap;
+  }
+  .decision-a.light { background: var(--green-bg);  color: var(--green-text); border: 1px solid #a8d5b0; }
+  .decision-a.full  { background: var(--info-bg);   color: var(--info-text);  border: 1px solid #b3c9f8; }
+  .decision-a.either{ background: var(--surface2);  color: var(--muted);      border: 1px solid var(--border); }
+
+  /* ── Simple summary (kid-friendly) ───────────────────── */
+  .simple-wrap {
+    font-family: 'Source Serif 4', serif;
+  }
+
+  .simple-hero {
+    background: linear-gradient(135deg, #fff8f0 0%, #f0f4ff 100%);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 1.75rem 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  .simple-hero-emoji { font-size: 2.8rem; line-height: 1; margin-bottom: .5rem; display: block; }
+  .simple-hero h2 { font-size: 1.6rem; color: var(--text); margin-bottom: .4rem; border: none; }
+  .simple-hero p  { font-size: 1rem; color: var(--muted); max-width: 480px; margin: 0 auto; }
+
+  .simple-section { margin: 2rem 0; }
+
+  .simple-analogy {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .simple-analogy strong { color: var(--accent); }
+
+  .simple-heading {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 1.75rem 0 .6rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+  .simple-heading-emoji { font-size: 1.3rem; }
+
+  .simple-steps { list-style: none; margin: 1rem 0; }
+  .simple-steps li {
+    display: flex; gap: 1rem; align-items: flex-start;
+    padding: .85rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: .98rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .simple-steps li:last-child { border-bottom: none; }
+  .simple-step-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent2); color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: .1rem;
+  }
+
+  .simple-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 580px) { .simple-compare { grid-template-columns: 1fr; } }
+
+  .simple-compare-card {
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .simple-compare-head {
+    padding: .65rem 1rem;
+    font-weight: 700;
+    font-size: .92rem;
+    text-align: center;
+  }
+  .sc-light .simple-compare-head { background: var(--green-bg);  color: var(--green-text); }
+  .sc-full  .simple-compare-head { background: var(--info-bg);   color: var(--info-text);  }
+  .simple-compare-body {
+    padding: .85rem 1rem;
+    font-size: .88rem;
+    color: var(--muted);
+    line-height: 1.6;
+    background: var(--surface);
+  }
+  .simple-compare-body strong { color: var(--text); display: block; margin-bottom: .25rem; }
+
+  .simple-qa { margin: 1rem 0; }
+  .simple-q {
+    font-weight: 700; color: var(--text);
+    font-size: .98rem; margin-bottom: .25rem;
+    display: flex; gap: .5rem; align-items: flex-start;
+  }
+  .simple-q::before { content: 'Q:'; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: .78rem; margin-top: .2rem; flex-shrink: 0; }
+  .simple-a {
+    color: var(--muted); font-size: .95rem;
+    padding-left: 1.8rem; margin-bottom: 1.1rem; line-height: 1.65;
+  }
+
+  /* Footer */
+  .site-footer { border-top: 1px solid var(--border); padding: 1.5rem 0 3rem; margin-top: 3rem; font-size: .85rem; color: var(--muted); text-align: center; }
+
+  @media (max-width: 640px) {
+    .app-body { grid-template-columns: 1fr; }
+    .file-tree { display: none; }
+    [role="tab"] { padding: .7rem .9rem; font-size: .72rem; }
+    h1 { font-size: 1.65rem; }
+    h2 { font-size: 1.35rem; }
+    pre { font-size: .76rem; }
+    .card-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (forced-colors: active) {
+    .option-card::before { background: Highlight; }
+    [role="tab"][aria-selected="true"] { border-bottom-color: Highlight; color: Highlight; }
+    .badge { border: 2px solid ButtonText; }
+    .tree-item.active { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+    .pane-tab.active { border-bottom-color: Highlight; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="page-wrap">
+
+  <header class="site-header" role="banner">
+    <span class="eyebrow" aria-hidden="true">Dev Guide · Canvas LMS</span>
+    <h1>Canvas LTI Plugins &amp; Custom Modals</h1>
+    <p class="lead">A complete reference for building LTI 1.3 tools and injecting custom modal interfaces into Canvas LMS.</p>
+  </header>
+
+  <nav aria-label="Guide sections" class="tab-nav-wrap">
+    <div class="tab-nav-inner">
+      <button class="tab-nav-arrow arr-left"
+              id="tab-arr-prev"
+              aria-label="Previous section"
+              disabled>&#8592;</button>
+
+      <div class="tab-nav-scroll">
+        <ul role="tablist" aria-label="Guide sections">
+          <li role="presentation"><button role="tab" id="tab-app"        aria-selected="true"  aria-controls="panel-app"        tabindex="0">01 · App Structure</button></li>
+          <li role="presentation"><button role="tab" id="tab-lti"        aria-selected="false" aria-controls="panel-lti"        tabindex="-1">02 · LTI Overview</button></li>
+          <li role="presentation"><button role="tab" id="tab-setup"      aria-selected="false" aria-controls="panel-setup"      tabindex="-1">03 · Setup &amp; Code</button></li>
+          <li role="presentation"><button role="tab" id="tab-placements" aria-selected="false" aria-controls="panel-placements" tabindex="-1">04 · Placements</button></li>
+          <li role="presentation"><button role="tab" id="tab-modal"      aria-selected="false" aria-controls="panel-modal"      tabindex="-1">05 · LTI Modals</button></li>
+          <li role="presentation"><button role="tab" id="tab-nolti"      aria-selected="false" aria-controls="panel-nolti"      tabindex="-1">06 · Modal Without LTI</button></li>
+          <li role="presentation"><button role="tab" id="tab-stack"      aria-selected="false" aria-controls="panel-stack"      tabindex="-1">07 · Dev Tips</button></li>
+          <li role="presentation"><button role="tab" id="tab-canvas"     aria-selected="false" aria-controls="panel-canvas"     tabindex="-1">08 · In Canvas</button></li>
+          <li role="presentation"><button role="tab" id="tab-apply"      aria-selected="false" aria-controls="panel-apply"      tabindex="-1">09 · Apply Plugin</button></li>
+          <li role="presentation"><button role="tab" id="tab-twoways"    aria-selected="false" aria-controls="panel-twoways"    tabindex="-1">10 · Two Approaches</button></li>
+          <li role="presentation"><button role="tab" id="tab-simple"     aria-selected="false" aria-controls="panel-simple"     tabindex="-1">11 · Simple Summary</button></li>
+        </ul>
+      </div>
+
+      <span class="tab-nav-counter" id="tab-counter" aria-live="polite" aria-atomic="true">1 / 11</span>
+
+      <button class="tab-nav-arrow arr-right"
+              id="tab-arr-next"
+              aria-label="Next section">&#8594;</button>
+    </div>
+  </nav>
+
+  <main id="main-content">
+
+    <!-- Panel 1: App Structure -->
+    <section role="tabpanel" id="panel-app" aria-labelledby="tab-app" class="active" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 01</p>
+      <h2>Simple LTI App Structure</h2>
+      <p>Below is a minimal but production-ready LTI 1.3 app using Node.js + <code>ltijs</code>. Click any file in the sidebar to see its contents and purpose.</p>
+
+      <!-- Code explorer -->
+      <div class="app-shell" role="region" aria-label="LTI app file explorer">
+        <div class="app-titlebar" aria-hidden="true">
+          <div class="titlebar-dots">
+            <span class="titlebar-dot dot-red"></span>
+            <span class="titlebar-dot dot-yellow"></span>
+            <span class="titlebar-dot dot-green"></span>
+          </div>
+          <span class="titlebar-label">my-lti-app/</span>
+        </div>
+
+        <div class="app-body">
+          <!-- File tree -->
+          <nav class="file-tree" aria-label="Project file tree">
+            <div class="tree-root">Project</div>
+
+            <button class="tree-item tree-indent1" onclick="showFile('server')" aria-pressed="true" id="btn-server">
+              <svg class="tree-icon tree-file-js" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              server.js
+            </button>
+
+            <button class="tree-item tree-indent1" onclick="showFile('pkg')" id="btn-pkg">
+              <svg class="tree-icon tree-file-json" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              package.json
+            </button>
+
+            <button class="tree-item tree-indent1" onclick="showFile('env')" id="btn-env">
+              <svg class="tree-icon tree-file-env" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              .env.example
+            </button>
+
+            <div class="tree-divider" role="separator"></div>
+            <div class="tree-root">public/</div>
+
+            <button class="tree-item tree-indent2" onclick="showFile('index')" id="btn-index">
+              <svg class="tree-icon tree-file-html" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              index.html
+            </button>
+
+            <div class="tree-divider" role="separator"></div>
+            <div class="tree-root">routes/</div>
+
+            <button class="tree-item tree-indent2" onclick="showFile('launch')" id="btn-launch">
+              <svg class="tree-icon tree-file-js" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              launch.js
+            </button>
+
+            <button class="tree-item tree-indent2" onclick="showFile('deeplink')" id="btn-deeplink">
+              <svg class="tree-icon tree-file-js" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              deeplink.js
+            </button>
+
+            <div class="tree-divider" role="separator"></div>
+            <div class="tree-root">config/</div>
+
+            <button class="tree-item tree-indent2" onclick="showFile('lticonfig')" id="btn-lticonfig">
+              <svg class="tree-icon tree-file-json" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              lti.config.json
+            </button>
+
+            <div class="tree-divider" role="separator"></div>
+            <div class="tree-root">docs/</div>
+
+            <button class="tree-item tree-indent2" onclick="showFile('readme')" id="btn-readme">
+              <svg class="tree-icon tree-file-md" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M3 2h7.5L13 5.5V14H3V2zm7 0v4h3"/></svg>
+              README.md
+            </button>
+          </nav>
+
+          <!-- Code pane -->
+          <div class="code-pane">
+            <div class="pane-tabs" role="tablist" aria-label="Open files">
+              <button class="pane-tab active" id="ptab-server"    role="tab" aria-selected="true"  aria-controls="pfile-server"    tabindex="0"    onclick="showFile('server')">server.js</button>
+              <button class="pane-tab"        id="ptab-pkg"       role="tab" aria-selected="false" aria-controls="pfile-pkg"       tabindex="-1"   onclick="showFile('pkg')">package.json</button>
+              <button class="pane-tab"        id="ptab-env"       role="tab" aria-selected="false" aria-controls="pfile-env"       tabindex="-1"   onclick="showFile('env')">.env.example</button>
+              <button class="pane-tab"        id="ptab-index"     role="tab" aria-selected="false" aria-controls="pfile-index"     tabindex="-1"   onclick="showFile('index')">index.html</button>
+              <button class="pane-tab"        id="ptab-launch"    role="tab" aria-selected="false" aria-controls="pfile-launch"    tabindex="-1"   onclick="showFile('launch')">launch.js</button>
+              <button class="pane-tab"        id="ptab-deeplink"  role="tab" aria-selected="false" aria-controls="pfile-deeplink"  tabindex="-1"   onclick="showFile('deeplink')">deeplink.js</button>
+              <button class="pane-tab"        id="ptab-lticonfig" role="tab" aria-selected="false" aria-controls="pfile-lticonfig" tabindex="-1"   onclick="showFile('lticonfig')">lti.config.json</button>
+              <button class="pane-tab"        id="ptab-readme"    role="tab" aria-selected="false" aria-controls="pfile-readme"    tabindex="-1"   onclick="showFile('readme')">README.md</button>
+            </div>
+
+            <!-- server.js -->
+            <div class="code-file active" id="pfile-server" role="tabpanel" aria-labelledby="ptab-server" tabindex="0">
+              <div class="pane-description">
+                <strong>server.js</strong> — Entry point. Configures ltijs, registers the Canvas platform, and starts the Express server.
+              </div>
+              <pre aria-label="server.js source code"><span class="kw">import</span> Lti       <span class="kw">from</span> <span class="str">'ltijs'</span>
+<span class="kw">import</span> { launch }  <span class="kw">from</span> <span class="str">'./routes/launch.js'</span>
+<span class="kw">import</span> { deeplink, submitDeeplink }<span class="kw">from</span> <span class="str">'./routes/deeplink.js'</span>
+<span class="kw">import</span> <span class="str">'dotenv/config'</span>
+
+<span class="cm">// 1. Configure ltijs with your database and secret</span>
+Lti.<span class="fn">setup</span>(
+  process.env.LTI_SECRET,
+  { url: process.env.MONGO_URL },
+  {
+    <span class="cm">// v5 option names: appRoute / loginRoute / keysetRoute</span>
+    appRoute:    <span class="str">'/'</span>,
+    loginRoute:  <span class="str">'/login'</span>,
+    keysetRoute: <span class="str">'/keys'</span>,
+    <span class="cm">// cookies MUST be cross-domain safe — Canvas loads your tool in an iframe</span>
+    cookies: {
+      secure:   <span class="kw">true</span>,         <span class="cm">// required when tool and Canvas are on different domains</span>
+      sameSite: <span class="str">'None'</span>        <span class="cm">// required for cross-domain iframe cookie to be sent</span>
+    },
+    devMode: process.env.NODE_ENV !== <span class="str">'production'</span> <span class="cm">// disables HTTPS check locally</span>
+  }
+)
+
+<span class="cm">// 2. Handle regular launch (assignment page, nav, etc.)</span>
+<span class="cm">//    onConnect must be registered BEFORE deploy()</span>
+Lti.<span class="fn">onConnect</span>((token, req, res) => {
+  <span class="fn">launch</span>(token, req, res)
+})
+
+<span class="cm">// 3. Handle Deep Linking (editor_button placement)</span>
+Lti.<span class="fn">onDeepLinking</span>((token, req, res) => {
+  <span class="fn">deeplink</span>(token, req, res)
+})
+
+<span class="cm">// 4. Boot — registerPlatform must come AFTER deploy()</span>
+<span class="kw">await</span> Lti.<span class="fn">deploy</span>({ port: <span class="num">3000</span> })
+
+<span class="cm">// Register the deep linking submit route on Lti's Express instance</span>
+Lti.app.<span class="fn">post</span>(<span class="str">'/deeplink/submit'</span>, submitDeeplink)
+
+<span class="cm">// 5. Register your Canvas instance (only stored once; ltijs skips</span>
+<span class="cm">//    duplicate registrations on subsequent restarts)</span>
+<span class="kw">await</span> Lti.<span class="fn">registerPlatform</span>({
+  url:                    process.env.CANVAS_URL,
+  name:                   <span class="str">'Canvas'</span>,
+  clientId:               process.env.CANVAS_CLIENT_ID,
+  authenticationEndpoint: process.env.CANVAS_AUTH_URL,
+  accesstokenEndpoint:    process.env.CANVAS_TOKEN_URL,
+  authConfig: { method: <span class="str">'JWK_SET'</span>, key: process.env.CANVAS_JWK_URL }
+})
+
+console.<span class="fn">log</span>(<span class="str">'LTI tool running on port 3000'</span>)</pre>
+            </div>
+
+            <!-- package.json -->
+            <div class="code-file" id="pfile-pkg" role="tabpanel" aria-labelledby="ptab-pkg" tabindex="0">
+              <div class="pane-description">
+                <strong>package.json</strong> — Dependencies and npm scripts. Uses ES modules (<code>"type":"module"</code>).
+              </div>
+              <pre aria-label="package.json source code">{
+  <span class="prop">"name"</span>: <span class="str">"my-lti-app"</span>,
+  <span class="prop">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="prop">"type"</span>: <span class="str">"module"</span>,
+  <span class="prop">"scripts"</span>: {
+    <span class="prop">"start"</span>: <span class="str">"node server.js"</span>,
+    <span class="prop">"dev"</span>:   <span class="str">"node --watch server.js"</span>
+  },
+  <span class="prop">"dependencies"</span>: {
+    <span class="prop">"ltijs"</span>:  <span class="str">"^5.9.0"</span>,  <span class="cm">// includes mongoose for MongoDB — no separate mongodb needed</span>
+    <span class="prop">"dotenv"</span>: <span class="str">"^16.0.0"</span>
+  }
+}</pre>
+            </div>
+
+            <!-- .env.example -->
+            <div class="code-file" id="pfile-env" role="tabpanel" aria-labelledby="ptab-env" tabindex="0">
+              <div class="pane-description">
+                <strong>.env.example</strong> — Copy to <code>.env</code> and fill in your Canvas Developer Key values. Never commit <code>.env</code> to version control.
+              </div>
+              <pre aria-label=".env.example source code"><span class="cm"># Copy this file to .env and fill in your values</span>
+
+<span class="cm"># LTI tool secret (any strong random string)</span>
+<span class="prop">LTI_SECRET</span>=<span class="str">replace-with-a-strong-secret</span>
+
+<span class="cm"># MongoDB connection string</span>
+<span class="prop">MONGO_URL</span>=<span class="str">mongodb://localhost:27017/ltidb</span>
+
+<span class="cm"># Your Canvas instance URL</span>
+<span class="prop">CANVAS_URL</span>=<span class="str">https://yourschool.instructure.com</span>
+
+<span class="cm"># From Admin > Developer Keys > your LTI key</span>
+<span class="prop">CANVAS_CLIENT_ID</span>=<span class="str">12345678901234</span>
+
+<span class="cm"># Canvas OIDC / token endpoints</span>
+<span class="prop">CANVAS_AUTH_URL</span>=<span class="str">https://yourschool.instructure.com/api/lti/authorize_redirect</span>
+<span class="prop">CANVAS_TOKEN_URL</span>=<span class="str">https://yourschool.instructure.com/login/oauth2/token</span>
+<span class="prop">CANVAS_JWK_URL</span>=<span class="str">https://yourschool.instructure.com/api/lti/security/jwks</span>
+
+<span class="prop">NODE_ENV</span>=<span class="str">development</span></pre>
+            </div>
+
+            <!-- index.html -->
+            <div class="code-file" id="pfile-index" role="tabpanel" aria-labelledby="ptab-index" tabindex="0">
+              <div class="pane-description">
+                <strong>public/index.html</strong> — The UI that loads inside the Canvas iframe after a successful LTI launch. Has access to user + course data via the JWT.
+              </div>
+              <pre aria-label="public/index.html source code"><span class="tag-hl">&lt;!DOCTYPE html&gt;</span>
+<span class="tag-hl">&lt;html</span> <span class="attr">lang</span>=<span class="str">"en"</span><span class="tag-hl">&gt;</span>
+<span class="tag-hl">&lt;head&gt;</span>
+  <span class="tag-hl">&lt;meta</span> <span class="attr">charset</span>=<span class="str">"UTF-8"</span><span class="tag-hl">&gt;</span>
+  <span class="tag-hl">&lt;meta</span> <span class="attr">name</span>=<span class="str">"viewport"</span> <span class="attr">content</span>=<span class="str">"width=device-width, initial-scale=1.0"</span><span class="tag-hl">&gt;</span>
+  <span class="tag-hl">&lt;title&gt;</span>My LTI Tool<span class="tag-hl">&lt;/title&gt;</span>
+<span class="tag-hl">&lt;/head&gt;</span>
+<span class="tag-hl">&lt;body&gt;</span>
+  <span class="tag-hl">&lt;main&gt;</span>
+    <span class="tag-hl">&lt;h1&gt;</span>Welcome, <span class="tag-hl">&lt;span</span> <span class="attr">id</span>=<span class="str">"user-name"</span><span class="tag-hl">&gt;&lt;/span&gt;&lt;/h1&gt;</span>
+    <span class="tag-hl">&lt;p&gt;</span>Course: <span class="tag-hl">&lt;span</span> <span class="attr">id</span>=<span class="str">"course-name"</span><span class="tag-hl">&gt;&lt;/span&gt;&lt;/p&gt;</span>
+    <span class="tag-hl">&lt;p&gt;</span>Role: <span class="tag-hl">&lt;span</span> <span class="attr">id</span>=<span class="str">"user-role"</span><span class="tag-hl">&gt;&lt;/span&gt;&lt;/p&gt;</span>
+  <span class="tag-hl">&lt;/main&gt;</span>
+
+  <span class="tag-hl">&lt;script&gt;</span>
+    <span class="cm">// Data is injected by the server at launch time</span>
+    <span class="kw">const</span> ctx = window.__LTI_CONTEXT__
+    document.<span class="fn">getElementById</span>(<span class="str">'user-name'</span>).textContent = ctx.user.name
+    document.<span class="fn">getElementById</span>(<span class="str">'course-name'</span>).textContent = ctx.course.title
+    document.<span class="fn">getElementById</span>(<span class="str">'user-role'</span>).textContent = ctx.roles.<span class="fn">join</span>(<span class="str">', '</span>)
+  <span class="tag-hl">&lt;/script&gt;</span>
+<span class="tag-hl">&lt;/body&gt;</span>
+<span class="tag-hl">&lt;/html&gt;</span></pre>
+            </div>
+
+            <!-- launch.js -->
+            <div class="code-file" id="pfile-launch" role="tabpanel" aria-labelledby="ptab-launch" tabindex="0">
+              <div class="pane-description">
+                <strong>routes/launch.js</strong> — Handles regular LTI launches (course navigation, assignment pages). Extracts the JWT token and injects context into the page.
+              </div>
+              <pre aria-label="routes/launch.js source code"><span class="kw">import</span> path <span class="kw">from</span> <span class="str">'path'</span>
+<span class="kw">import</span> { readFileSync } <span class="kw">from</span> <span class="str">'fs'</span>
+
+<span class="kw">export function</span> <span class="fn">launch</span>(token, req, res) {
+  <span class="cm">// Extract user + course info from the JWT token</span>
+  <span class="kw">const</span> context = {
+    user: {
+      id:    token.user,
+      name:  token.userInfo?.name ?? <span class="str">'Unknown'</span>,
+      email: token.userInfo?.email ?? <span class="str">''</span>
+    },
+    course: {
+      id:    token.platformContext?.context?.id,
+      title: token.platformContext?.context?.title ?? <span class="str">'Unknown course'</span>
+    },
+    roles: token.platformContext?.roles ?? []
+  }
+
+  <span class="cm">// Read the HTML template and inject context as a script tag</span>
+  <span class="kw">let</span> html = <span class="fn">readFileSync</span>(<span class="str">'public/index.html'</span>, <span class="str">'utf8'</span>)
+  html = html.<span class="fn">replace</span>(
+    <span class="str">'&lt;/head&gt;'</span>,
+    <span class="str">`&lt;script&gt;window.__LTI_CONTEXT__ = </span>${JSON.<span class="fn">stringify</span>(context)}<span class="str">;&lt;/script&gt;&lt;/head&gt;`</span>
+  )
+
+  res.<span class="fn">setHeader</span>(<span class="str">'Content-Type'</span>, <span class="str">'text/html'</span>)
+  res.<span class="fn">send</span>(html)
+}</pre>
+            </div>
+
+            <!-- deeplink.js -->
+            <div class="code-file" id="pfile-deeplink" role="tabpanel" aria-labelledby="ptab-deeplink" tabindex="0">
+              <div class="pane-description">
+                <strong>routes/deeplink.js</strong> — Deep Linking is a <em>two-step</em> flow. <code>deeplink()</code> (called by <code>onDeepLinking</code>) serves your selection UI when Canvas first opens the modal. <code>submitDeeplink()</code> is a separate POST handler that receives the user's choice and returns the Deep Linking response to Canvas.
+              </div>
+              <pre aria-label="routes/deeplink.js source code"><span class="kw">import</span> Lti <span class="kw">from</span> <span class="str">'ltijs'</span>
+
+<span class="cm">/**
+ * Step 1 — onDeepLinking fires when Canvas first opens the modal.
+ * Serve your selection UI here. Do NOT try to read req.body yet —
+ * the user hasn't chosen anything.
+ */</span>
+<span class="kw">export function</span> <span class="fn">deeplink</span>(token, req, res) {
+  <span class="cm">// Serve the selection UI. ltijs passes the ltik as a query param (?ltik=...)
+  // Your HTML form should include it as a hidden field so submitDeeplink can
+  // validate the session when the user submits their content choice.</span>
+  <span class="kw">const</span> ltik = res.locals.ltik
+  res.<span class="fn">send</span>(<span class="str">`&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;&lt;body&gt;
+  &lt;h1&gt;Select content to embed&lt;/h1&gt;
+  &lt;form method="POST" action="/deeplink/submit"&gt;
+    &lt;input type="hidden" name="ltik" value="${ltik}"&gt;
+    &lt;select name="selectedId"&gt;
+      &lt;option value="item-1"&gt;Item 1&lt;/option&gt;
+      &lt;option value="item-2"&gt;Item 2&lt;/option&gt;
+    &lt;/select&gt;
+    &lt;button type="submit"&gt;Insert&lt;/button&gt;
+  &lt;/form&gt;
+&lt;/body&gt;&lt;/html&gt;`</span>)
+}
+
+<span class="cm">/**
+ * Step 2 — A separate POST route receives the user's selection
+ * and returns the Deep Linking response to Canvas.
+ * Register this on Lti.app AFTER deploy():
+ *   Lti.app.post('/deeplink/submit', submitDeeplink)
+ */</span>
+<span class="kw">export async function</span> <span class="fn">submitDeeplink</span>(req, res) {
+  <span class="cm">// ltik is passed back by your UI as a query param or Authorization header</span>
+  <span class="kw">const</span> items = [
+    {
+      type: <span class="str">'html'</span>,
+      html: <span class="str">`&lt;iframe
+        src="https://yourtool.com/embed?id=</span>${req.body.selectedId}<span class="str">"
+        width="100%" height="400"
+        title="My LTI Tool embed"&gt;&lt;/iframe&gt;`</span>
+    }
+  ]
+
+  <span class="kw">const</span> message = <span class="kw">await</span> Lti.DeepLinking.<span class="fn">createDeepLinkingMessage</span>(
+    res.locals.token,  <span class="cm">// token is on res.locals after ltijs validates the ltik</span>
+    items,
+    { message: <span class="str">'Content added successfully!'</span> }
+  )
+
+  res.<span class="fn">send</span>(message)
+}</pre>
+            </div>
+
+            <!-- lti.config.json -->
+            <div class="code-file" id="pfile-lticonfig" role="tabpanel" aria-labelledby="ptab-lticonfig" tabindex="0">
+              <div class="pane-description">
+                <strong>config/lti.config.json</strong> — The JSON config you paste into Canvas Developer Keys. The <code>extensions</code> block uses Canvas's own placement format (still fully supported). Paste this into the <strong>LTI 1.3 Configuration</strong> field after selecting <strong>Paste JSON</strong> as the method.
+              </div>
+              <pre aria-label="config/lti.config.json source code">{
+  <span class="prop">"title"</span>: <span class="str">"My LTI Tool"</span>,
+  <span class="prop">"description"</span>: <span class="str">"A sample LTI 1.3 tool"</span>,
+  <span class="prop">"target_link_uri"</span>: <span class="str">"https://yourtool.com/"</span>,
+  <span class="prop">"oidc_initiation_url"</span>: <span class="str">"https://yourtool.com/login"</span>,
+  <span class="prop">"public_jwk_url"</span>: <span class="str">"https://yourtool.com/keys"</span>,
+  <span class="prop">"scopes"</span>: [
+    <span class="str">"https://purl.imsglobal.org/spec/lti-nrps/scope/contextmembership.readonly"</span>
+  ],
+  <span class="prop">"extensions"</span>: [{
+    <span class="prop">"platform"</span>: <span class="str">"canvas.instructure.com"</span>,
+    <span class="prop">"settings"</span>: {
+      <span class="prop">"platform"</span>: <span class="str">"canvas.instructure.com"</span>,
+      <span class="prop">"placements"</span>: [
+        {
+          <span class="prop">"placement"</span>: <span class="str">"course_navigation"</span>,
+          <span class="prop">"message_type"</span>: <span class="str">"LtiResourceLinkRequest"</span>,
+          <span class="prop">"target_link_uri"</span>: <span class="str">"https://yourtool.com/"</span>,
+          <span class="prop">"label"</span>: <span class="str">"My Tool"</span>
+        },
+        {
+          <span class="prop">"placement"</span>: <span class="str">"editor_button"</span>,
+          <span class="prop">"message_type"</span>: <span class="str">"LtiDeepLinkingRequest"</span>,
+          <span class="prop">"target_link_uri"</span>: <span class="str">"https://yourtool.com/deeplink"</span>,
+          <span class="prop">"label"</span>: <span class="str">"Insert from My Tool"</span>,
+          <span class="prop">"icon_url"</span>: <span class="str">"https://yourtool.com/icon.svg"</span>
+        }
+      ]
+    }
+  }]
+}</pre>
+            </div>
+
+            <!-- README -->
+            <div class="code-file" id="pfile-readme" role="tabpanel" aria-labelledby="ptab-readme" tabindex="0">
+              <div class="pane-description">
+                <strong>docs/README.md</strong> — Setup and deployment instructions for the project.
+              </div>
+              <pre aria-label="README.md source code"><span class="cm"># My LTI Tool</span>
+
+A minimal LTI 1.3 tool built with ltijs + Node.js.
+
+<span class="cm">## Quick start</span>
+
+<span class="str">```bash</span>
+git clone https://github.com/you/my-lti-app
+cd my-lti-app
+npm install
+cp .env.example .env
+<span class="str">```</span>
+
+Fill in <span class="prop">.env</span> with your Canvas Developer Key values.
+
+<span class="cm">## Development (with ngrok)</span>
+
+Canvas requires HTTPS. Use ngrok to expose localhost:
+
+<span class="str">```bash</span>
+npm run dev
+ngrok http 3000
+<span class="str">```</span>
+
+Use the ngrok HTTPS URL as your tool base URL in Canvas.
+
+<span class="cm">## Register in Canvas</span>
+
+1. Admin → Developer Keys → + Developer Key → LTI Key
+2. Paste contents of <span class="prop">config/lti.config.json</span>
+3. Save → note the Client ID
+4. Add to course: Settings → Apps → + App → By Client ID
+
+<span class="cm">## Production</span>
+
+- Set NODE_ENV=production in .env
+- Deploy behind a reverse proxy (nginx, Caddy)
+- Use a real MongoDB instance (Atlas, etc.)</pre>
+            </div>
+
+          </div><!-- /.code-pane -->
+        </div><!-- /.app-body -->
+      </div><!-- /.app-shell -->
+
+      <!-- LTI flow diagram -->
+      <div class="flow-section">
+        <h3>How the launch flow works</h3>
+        <p>Every time Canvas opens your tool, it follows the LTI 1.3 OIDC launch sequence:</p>
+
+        <div class="table-wrap">
+          <table aria-label="LTI 1.3 launch sequence">
+            <caption>Launch sequence — step by step</caption>
+            <thead><tr><th scope="col">Step</th><th scope="col">Who</th><th scope="col">What happens</th></tr></thead>
+            <tbody>
+              <tr><td>1. Initiation</td><td>Canvas</td><td>Canvas POSTs to your <code>/login</code> endpoint with a login hint and target URI</td></tr>
+              <tr><td>2. OIDC redirect</td><td>Your server</td><td>You validate the hint and redirect the browser back to Canvas's auth endpoint</td></tr>
+              <tr><td>3. JWT launch</td><td>Canvas</td><td>Canvas POSTs a signed JWT (id_token) back to your app route (<code>/</code>) via ltijs internals</td></tr>
+              <tr><td>4. Token verified</td><td>ltijs</td><td>ltijs verifies the JWT using Canvas's JWKS, checks nonce, builds the <code>token</code> object</td></tr>
+              <tr><td>5. onConnect fires</td><td>Your code</td><td>Your <code>launch.js</code> handler runs — user/course data is available in <code>token</code></td></tr>
+              <tr><td>6. UI loads</td><td>Browser</td><td>Your tool's HTML is returned and displayed inside a Canvas iframe</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout info" role="note" aria-label="Note">
+          <span class="callout-icon" aria-hidden="true">ℹ</span>
+          <span>ltijs handles steps 2–4 automatically. You only write code for step 5 (<code>onConnect</code> / <code>onDeepLinking</code>) and step 6 (your HTML/UI).</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 2: LTI Overview -->
+    <section role="tabpanel" id="panel-lti" aria-labelledby="tab-lti" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 02</p>
+      <h2>What is LTI?</h2>
+      <p>LTI (Learning Tools Interoperability) lets you embed external tools inside Canvas. Your tool acts as an external web app that Canvas launches via a signed JWT handshake.</p>
+      <div class="card-grid" role="list" aria-label="LTI key concepts">
+        <div class="card-item" role="listitem"><span class="card-label">Platform</span><p>Canvas LMS — the host that initiates launches and manages users and courses.</p></div>
+        <div class="card-item" role="listitem"><span class="card-label">Tool</span><p>Your external web app, loaded in an iframe or modal inside Canvas.</p></div>
+        <div class="card-item" role="listitem"><span class="card-label">Launch</span><p>The moment Canvas opens your tool, passing user and course context via a signed JWT.</p></div>
+      </div>
+      <div class="callout info" role="note" aria-label="Note">
+        <span class="callout-icon" aria-hidden="true">ℹ</span>
+        <span>Canvas uses <strong>LTI 1.3</strong> — the current standard. LTI 1.1 is deprecated. Always build for 1.3.</span>
+      </div>
+      <h3>Key Endpoints Your App Needs</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang" aria-hidden="true">Routes</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy route list to clipboard">Copy</button></div>
+        <pre aria-label="Required server routes"><span class="cm">// Canvas will call these on your server (matches server.js config)</span>
+<span class="prop">/login</span>  <span class="cm">← OIDC initiation — Canvas starts every launch here (loginRoute)</span>
+<span class="prop">/</span>       <span class="cm">← App route — onConnect fires here after a successful launch (appRoute)</span>
+<span class="prop">/keys</span>   <span class="cm">← JWK keyset — Canvas fetches your public key here (keysetRoute)</span></pre>
+      </div>
+      <h3>Registering in Canvas</h3>
+      <p>Go to <strong>Admin → Developer Keys → + Developer Key → LTI Key</strong> and fill in:</p>
+      <div class="table-wrap">
+        <table aria-label="LTI registration fields">
+          <caption>Developer Key configuration</caption>
+          <thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
+          <tbody>
+            <tr><td>Target Link URI</td><td>https://yourtool.com/ &nbsp;<span style="color:var(--muted);font-size:.85em">(the app route — root by default)</span></td></tr>
+            <tr><td>OIDC Initiation URL</td><td>https://yourtool.com/login</td></tr>
+            <tr><td>JWK Method</td><td>Public JWK URL → https://yourtool.com/keys</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Panel 3: Setup -->
+    <section role="tabpanel" id="panel-setup" aria-labelledby="tab-setup" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 03</p>
+      <h2>Setup &amp; Code</h2>
+      <p>Use <strong>ltijs</strong> — the most popular Node.js LTI 1.3 library. The App Structure tab above shows a complete project you can copy.</p>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang" aria-hidden="true">Bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy install command to clipboard">Copy</button></div>
+        <pre aria-label="Install ltijs">npm install ltijs dotenv</pre>
+      </div>
+      <div class="callout warn" role="note" aria-label="Warning">
+        <span class="callout-icon" aria-hidden="true">⚠</span>
+        <span>Canvas requires <strong>HTTPS</strong> even in development. Use <strong>ngrok</strong> to expose localhost with a valid TLS certificate during development.</span>
+      </div>
+      <h3>Python Alternative (PyLTI1p3)</h3>
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang" aria-hidden="true">Bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy Python install command to clipboard">Copy</button></div>
+        <pre aria-label="Install PyLTI1p3">pip install PyLTI1p3</pre>
+      </div>
+    </section>
+
+    <!-- Panel 4: Placements -->
+    <section role="tabpanel" id="panel-placements" aria-labelledby="tab-placements" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 04</p>
+      <h2>Placements</h2>
+      <p>Placements control <em>where</em> Canvas surfaces your tool. The <code>lti.config.json</code> file in the App Structure tab shows how to configure them.</p>
+      <div class="table-wrap">
+        <table aria-label="LTI placement options">
+          <caption>Available placements</caption>
+          <thead><tr><th scope="col">Placement</th><th scope="col">Where it appears</th></tr></thead>
+          <tbody>
+            <tr><td>course_navigation</td><td>Left sidebar link in a course</td></tr>
+            <tr><td>assignment_selection</td><td>When an instructor creates an assignment</td></tr>
+            <tr><td>link_selection</td><td>In the Rich Content Editor (RCE) link dialog</td></tr>
+            <tr><td>editor_button</td><td>Toolbar button in the RCE — opens a modal natively</td></tr>
+            <tr><td>global_navigation</td><td>Top-level navigation bar (admin tools)</td></tr>
+            <tr><td>submission_type_selection</td><td>Student submission flow</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Panel 5: LTI Modals -->
+    <section role="tabpanel" id="panel-modal" aria-labelledby="tab-modal" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 05</p>
+      <h2>Custom Modals via LTI</h2>
+      <p>Three approaches to show a modal when your LTI tool is loaded inside Canvas.</p>
+      <div class="option-card opt-a">
+        <span class="option-num">Option A</span>
+        <h3>Canvas PostMessage API</h3>
+        <p>Trigger a native Canvas tray or modal from inside your iframe using <code>window.parent.postMessage</code>.</p>
+        <div class="code-wrap">
+          <div class="code-header"><span class="code-lang" aria-hidden="true">JavaScript</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy PostMessage example to clipboard">Copy</button></div>
+          <pre aria-label="PostMessage API example">window.parent.<span class="fn">postMessage</span>(
+  {
+    subject: <span class="str">'requestFullWindowLaunch'</span>,
+    data: {
+      url:       <span class="str">'https://yourtool.com/launch'</span>,
+      placement: <span class="str">'course_navigation'</span>, <span class="cm">// required — match your tool's placement</span>
+      launchType: <span class="str">'popup'</span>,              <span class="cm">// 'same_window' | 'new_window' | 'popup'</span>
+      launchOptions: { width: <span class="num">800</span>, height: <span class="num">600</span> }
+    }
+  },
+  <span class="str">'*'</span>
+)</pre>
+        </div>
+      </div>
+      <div class="option-card opt-b">
+        <span class="option-num">Option B</span>
+        <h3>Modal Inside Your Iframe</h3>
+        <p>Build your own modal UI entirely within the iframe. Include ARIA roles so it is accessible.</p>
+        <div class="code-wrap">
+          <div class="code-header"><span class="code-lang" aria-hidden="true">HTML</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy accessible modal HTML to clipboard">Copy</button></div>
+          <pre aria-label="Accessible iframe modal HTML"><span class="tag-hl">&lt;div</span> <span class="attr">role</span>=<span class="str">"dialog"</span> <span class="attr">aria-modal</span>=<span class="str">"true"</span>
+     <span class="attr">aria-labelledby</span>=<span class="str">"modal-title"</span>
+     <span class="attr">style</span>=<span class="str">"display:none; position:fixed; inset:0;"</span><span class="tag-hl">&gt;</span>
+  <span class="tag-hl">&lt;h2</span> <span class="attr">id</span>=<span class="str">"modal-title"</span><span class="tag-hl">&gt;</span>My LTI Tool<span class="tag-hl">&lt;/h2&gt;</span>
+  <span class="tag-hl">&lt;button</span> <span class="attr">aria-label</span>=<span class="str">"Close dialog"</span><span class="tag-hl">&gt;</span>Close<span class="tag-hl">&lt;/button&gt;</span>
+<span class="tag-hl">&lt;/div&gt;</span></pre>
+        </div>
+      </div>
+      <div class="option-card opt-c">
+        <span class="option-num">Option C — Most Native</span>
+        <h3>editor_button + Deep Linking <span class="badge badge-green" aria-label="Recommended approach">Recommended</span></h3>
+        <p>Canvas opens your tool in a native modal from the RCE toolbar. Return content back to Canvas via a Deep Linking response (see <code>deeplink.js</code> in the App Structure tab).</p>
+      </div>
+    </section>
+
+    <!-- Panel 6: Modal Without LTI -->
+    <section role="tabpanel" id="panel-nolti" aria-labelledby="tab-nolti" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 06</p>
+      <h2>Modal Without LTI</h2>
+      <p>You can add a custom modal to Canvas assignment pages without any LTI setup.</p>
+      <div class="option-card opt-a">
+        <span class="option-num">Option 1 — Admin Required</span>
+        <h3>Custom JavaScript via Theme Editor <span class="badge badge-yellow" aria-label="Requires Canvas admin access">Admin</span></h3>
+        <p>Upload a JS file in <strong>Admin → Themes → Custom JS</strong>. Runs on every Canvas page globally.</p>
+        <div class="code-wrap">
+          <div class="code-header"><span class="code-lang" aria-hidden="true">JavaScript</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy custom JS modal code to clipboard">Copy</button></div>
+          <pre aria-label="Canvas Theme JS modal injection"><span class="kw">function</span> <span class="fn">injectModal</span>() {
+  <span class="kw">if</span> (!window.location.pathname.<span class="fn">match</span>(<span class="str">/\/assignments\/\d+/</span>)) <span class="kw">return</span>;
+
+  <span class="kw">const</span> wrap = document.<span class="fn">createElement</span>(<span class="str">'div'</span>);
+  wrap.innerHTML = <span class="str">`
+    &lt;div id="modal" role="dialog" aria-modal="true"
+         aria-labelledby="modal-title"
+         style="display:none; position:fixed; inset:0;
+                background:rgba(0,0,0,0.5); z-index:9999;"&gt;
+      &lt;div style="background:#fff; margin:8% auto;
+                  padding:2rem; width:560px; border-radius:8px;"&gt;
+        &lt;button id="modal-close" aria-label="Close"&gt;✕&lt;/button&gt;
+        &lt;h2 id="modal-title"&gt;My Custom Tool&lt;/h2&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  `</span>;
+  document.body.<span class="fn">appendChild</span>(wrap);
+
+  <span class="kw">const</span> btn = document.<span class="fn">createElement</span>(<span class="str">'button'</span>);
+  btn.textContent = <span class="str">'Open Tool'</span>;
+  <span class="kw">const</span> area = document.<span class="fn">querySelector</span>(<span class="str">'.submit_assignment_link'</span>);
+  <span class="kw">if</span> (area) area.<span class="fn">after</span>(btn);
+
+  btn.<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () => {
+    document.<span class="fn">getElementById</span>(<span class="str">'modal'</span>).style.display = <span class="str">'block'</span>;
+  });
+  document.<span class="fn">getElementById</span>(<span class="str">'modal-close'</span>).<span class="fn">addEventListener</span>(<span class="str">'click'</span>, () => {
+    document.<span class="fn">getElementById</span>(<span class="str">'modal'</span>).style.display = <span class="str">'none'</span>;
+  });
+}
+
+<span class="kw">if</span> (document.readyState === <span class="str">'loading'</span>)
+  document.<span class="fn">addEventListener</span>(<span class="str">'DOMContentLoaded'</span>, injectModal);
+<span class="kw">else</span>
+  <span class="fn">injectModal</span>();</pre>
+        </div>
+      </div>
+      <div class="option-card opt-b">
+        <span class="option-num">Option 2 — No Admin Needed</span>
+        <h3>Tampermonkey Userscript <span class="badge badge-green" aria-label="Works per user, no admin needed">Per-User</span></h3>
+        <p>Install the Tampermonkey browser extension and paste the script above with this header.</p>
+        <div class="code-wrap">
+          <div class="code-header"><span class="code-lang" aria-hidden="true">JavaScript</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy Tampermonkey header to clipboard">Copy</button></div>
+          <pre aria-label="Tampermonkey userscript header"><span class="cm">// ==UserScript==</span>
+<span class="cm">// @name    Canvas Assignment Modal</span>
+<span class="cm">// @match   https://*.instructure.com/courses/*/assignments/*</span>
+<span class="cm">// @grant   none</span>
+<span class="cm">// ==/UserScript==</span>
+
+(<span class="kw">function</span>() { <span class="str">'use strict'</span>; <span class="fn">injectModal</span>(); })()</pre>
+        </div>
+      </div>
+      <h3>Caveats</h3>
+      <div class="table-wrap">
+        <table aria-label="Caveats for no-LTI modal approaches">
+          <caption>Known risks</caption>
+          <thead><tr><th scope="col">Issue</th><th scope="col">Detail</th></tr></thead>
+          <tbody>
+            <tr><td>Canvas updates</td><td>Canvas may rename DOM selectors, breaking your queries without warning.</td></tr>
+            <tr><td>CSP headers</td><td>Content Security Policy may block inline scripts in some configurations.</td></tr>
+            <tr><td>React conflict</td><td>Canvas is a React app — heavy DOM manipulation can conflict with its rendering cycle.</td></tr>
+            <tr><td>Sub-accounts</td><td>Admin Theme JS applies account-wide or per sub-account.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Panel 7: Dev Tips -->
+    <section role="tabpanel" id="panel-stack" aria-labelledby="tab-stack" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 07</p>
+      <h2>Recommended Stack &amp; Dev Tips</h2>
+      <h3>Technology Stack</h3>
+      <div class="stack-card" role="list" aria-label="Recommended technology stack">
+        <div class="stack-row" role="listitem"><span class="stack-layer">Backend</span>   <span class="stack-value">Node.js + <code>ltijs</code>&nbsp; or&nbsp; Python + <code>PyLTI1p3</code></span></div>
+        <div class="stack-row" role="listitem"><span class="stack-layer">Frontend</span>  <span class="stack-value">React or plain HTML/JS inside your LTI iframe</span></div>
+        <div class="stack-row" role="listitem"><span class="stack-layer">Auth</span>      <span class="stack-value">Handled by LTI JWT — no separate login flow needed</span></div>
+        <div class="stack-row" role="listitem"><span class="stack-layer">Database</span>  <span class="stack-value">MongoDB or PostgreSQL (for storing nonces &amp; sessions)</span></div>
+        <div class="stack-row" role="listitem"><span class="stack-layer">Dev tunnel</span><span class="stack-value">ngrok — exposes localhost with HTTPS to Canvas</span></div>
+      </div>
+      <h3>Quick Dev Checklist</h3>
+      <div class="table-wrap">
+        <table aria-label="Development checklist">
+          <caption>Steps to verify before going live</caption>
+          <thead><tr><th scope="col">Step</th><th scope="col">Detail</th></tr></thead>
+          <tbody>
+            <tr><td>1. HTTPS</td><td>Canvas requires it. Use ngrok or Caddy for local development.</td></tr>
+            <tr><td>2. Test instance</td><td>Use a free canvas.instructure.com account — don't develop on production.</td></tr>
+            <tr><td>3. Client ID</td><td>Saved from Developer Keys — paste into your <code>.env</code> file.</td></tr>
+            <tr><td>4. JWKS</td><td>Expose your public key at <code>/keys</code> so Canvas can verify JWTs.</td></tr>
+            <tr><td>5. State/Nonce</td><td>LTI 1.3 requires nonce validation — ltijs handles this automatically.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout info" role="note" aria-label="Tip">
+        <span class="callout-icon" aria-hidden="true">💡</span>
+        <span>The <a href="https://github.com/Edu-Versity/ltijs">ltijs GitHub repository</a> includes a working example app — a great starting point before writing from scratch.</span>
+      </div>
+    </section>
+
+    <!-- Panel 8: In Canvas -->
+    <section role="tabpanel" id="panel-canvas" aria-labelledby="tab-canvas" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 08</p>
+      <h2>Activating &amp; Using in Canvas</h2>
+      <p>Walk through every step from creating a Developer Key to your tool appearing inside a Canvas course. Click <strong>Next</strong> to advance through each screen.</p>
+
+      <div class="stepper-wrap" id="canvas-stepper">
+
+        <!-- Progress dots -->
+        <div class="step-progress" role="list" aria-label="Setup steps">
+          <button class="step-pip active" role="listitem" onclick="goStep(0)" aria-label="Step 1: Create Developer Key">
+            <span class="pip-dot">1</span><span class="pip-label">Create key</span>
+          </button>
+          <div class="pip-line" id="line-0-1"></div>
+          <button class="step-pip" role="listitem" onclick="goStep(1)" aria-label="Step 2: Configure LTI settings">
+            <span class="pip-dot">2</span><span class="pip-label">Configure</span>
+          </button>
+          <div class="pip-line" id="line-1-2"></div>
+          <button class="step-pip" role="listitem" onclick="goStep(2)" aria-label="Step 3: Enable the key">
+            <span class="pip-dot">3</span><span class="pip-label">Enable key</span>
+          </button>
+          <div class="pip-line" id="line-2-3"></div>
+          <button class="step-pip" role="listitem" onclick="goStep(3)" aria-label="Step 4: Install in course">
+            <span class="pip-dot">4</span><span class="pip-label">Install</span>
+          </button>
+          <div class="pip-line" id="line-3-4"></div>
+          <button class="step-pip" role="listitem" onclick="goStep(4)" aria-label="Step 5: Tool appears in navigation">
+            <span class="pip-dot">5</span><span class="pip-label">Course nav</span>
+          </button>
+          <div class="pip-line" id="line-4-5"></div>
+          <button class="step-pip" role="listitem" onclick="goStep(5)" aria-label="Step 6: Use in RCE toolbar">
+            <span class="pip-dot">6</span><span class="pip-label">RCE button</span>
+          </button>
+          <div class="pip-line" id="line-5-6"></div>
+          <button class="step-pip" role="listitem" onclick="goStep(6)" aria-label="Step 7: Tool launches">
+            <span class="pip-dot">7</span><span class="pip-label">Tool live</span>
+          </button>
+        </div>
+
+        <!-- Step card -->
+        <div class="step-card" aria-live="polite">
+
+          <!-- Step 1: Admin > Developer Keys -->
+          <div class="step-body active" id="step-0">
+            <div class="step-header">
+              <span class="step-num">Step 1 of 7</span>
+              <span class="step-title">Open Admin &rarr; Developer Keys</span>
+            </div>
+            <div class="canvas-frame" aria-label="Canvas Admin Developer Keys screen">
+              <div class="cf-topbar">
+                <span class="cf-topbar-logo">canvas</span>
+                <span class="cf-breadcrumb">Admin</span>
+                <span class="cf-breadcrumb" style="color:#2d3b45;font-weight:600">Developer Keys</span>
+              </div>
+              <div class="cf-body">
+                <div class="cf-sidebar" aria-hidden="true">
+                  <div class="cf-nav-item active-nav">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                    <span>Admin</span>
+                  </div>
+                </div>
+                <div class="cf-content">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+                    <div class="cf-page-title" style="margin:0">Developer Keys</div>
+                    <button class="cf-btn-primary" style="display:flex;align-items:center;gap:.3rem">+ Developer Key ▾</button>
+                  </div>
+                  <table class="cf-table" aria-label="Developer keys list">
+                    <thead><tr><th>Name</th><th>Client ID</th><th>Type</th><th>State</th></tr></thead>
+                    <tbody>
+                      <tr><td>Google Drive LTI</td><td>10000000000001</td><td>LTI</td><td><span class="cf-status-on">On</span></td></tr>
+                      <tr><td>Turnitin</td><td>10000000000002</td><td>LTI</td><td><span class="cf-status-on">On</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="cf-annotation">Click <strong>+ Developer Key</strong>, then choose <strong>LTI Key</strong> from the dropdown.</div>
+            <div class="step-desc">Go to <strong>Admin</strong> in the left sidebar, then choose <strong>Developer Keys</strong>. You need Canvas admin access for this step.</div>
+          </div>
+
+          <!-- Step 2: Configure -->
+          <div class="step-body" id="step-1">
+            <div class="step-header">
+              <span class="step-num">Step 2 of 7</span>
+              <span class="step-title">Paste your LTI JSON config</span>
+            </div>
+            <div class="canvas-frame" aria-label="Canvas LTI Key configuration form">
+              <div class="cf-topbar">
+                <span class="cf-topbar-logo">canvas</span>
+                <span class="cf-breadcrumb">Admin</span>
+                <span class="cf-breadcrumb">Developer Keys</span>
+                <span class="cf-breadcrumb" style="color:#2d3b45;font-weight:600">New LTI Key</span>
+              </div>
+              <div class="cf-body">
+                <div class="cf-sidebar" aria-hidden="true">
+                  <div class="cf-nav-item active-nav">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                  </div>
+                </div>
+                <div class="cf-content">
+                  <div class="cf-page-title">New LTI Key</div>
+                  <div style="background:#fff;border:1px solid #c7cdd1;border-radius:4px;padding:.75rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem">
+                    <div class="cf-form-group">
+                      <label class="cf-label">Key name</label>
+                      <input class="cf-input highlight" value="My LTI Tool" readonly aria-label="Key name: My LTI Tool">
+                    </div>
+                    <div class="cf-form-group">
+                      <label class="cf-label">Method</label>
+                      <input class="cf-input" value="Paste JSON" readonly aria-label="Method: Paste JSON">
+                    </div>
+                    <div class="cf-form-group" style="grid-column:1/-1">
+                      <label class="cf-label">LTI 1.3 Configuration (JSON)</label>
+                      <textarea class="cf-textarea highlight" rows="4" readonly aria-label="LTI JSON configuration">{ "title": "My LTI Tool", "target_link_uri": "https://yourtool.com/", "oidc_initiation_url": "https://yourtool.com/login", "public_jwk_url": "https://yourtool.com/keys", ... }</textarea>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:.5rem;margin-top:.6rem">
+                    <button class="cf-btn-primary">Save</button>
+                    <button class="cf-btn-secondary">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cf-annotation">Paste the contents of <code>config/lti.config.json</code> into the JSON field.</div>
+            <div class="step-desc">Choose <strong>Paste JSON</strong> as the method, then paste your <code>lti.config.json</code> file contents. Fill in a descriptive key name and click <strong>Save</strong>.</div>
+          </div>
+
+          <!-- Step 3: Enable key -->
+          <div class="step-body" id="step-2">
+            <div class="step-header">
+              <span class="step-num">Step 3 of 7</span>
+              <span class="step-title">Enable the Developer Key</span>
+            </div>
+            <div class="canvas-frame" aria-label="Canvas Developer Keys list showing the new key off">
+              <div class="cf-topbar">
+                <span class="cf-topbar-logo">canvas</span>
+                <span class="cf-breadcrumb">Admin</span>
+                <span class="cf-breadcrumb" style="color:#2d3b45;font-weight:600">Developer Keys</span>
+              </div>
+              <div class="cf-body">
+                <div class="cf-sidebar" aria-hidden="true">
+                  <div class="cf-nav-item active-nav">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                  </div>
+                </div>
+                <div class="cf-content">
+                  <div class="cf-page-title" style="margin-bottom:.5rem">Developer Keys</div>
+                  <table class="cf-table" aria-label="Developer keys including new key">
+                    <thead><tr><th>Name</th><th>Client ID</th><th>Type</th><th>State</th></tr></thead>
+                    <tbody>
+                      <tr><td>Google Drive LTI</td><td>10000000000001</td><td>LTI</td><td><span class="cf-status-on">On</span></td></tr>
+                      <tr><td>Turnitin</td><td>10000000000002</td><td>LTI</td><td><span class="cf-status-on">On</span></td></tr>
+                      <tr class="highlight-row">
+                        <td><strong>My LTI Tool</strong></td>
+                        <td style="font-family:'JetBrains Mono',monospace;color:#0770a3">10000000000099</td>
+                        <td>LTI</td>
+                        <td>
+                          <div class="cf-toggle">
+                            <div class="cf-toggle-track on" aria-hidden="true"><div class="cf-toggle-thumb"></div></div>
+                            <span class="cf-status-on">On</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div style="margin-top:.5rem;padding:.35rem .5rem;background:#e6f4ea;border:1px solid #a8d5b0;border-radius:4px;font-size:11px;color:#1a5c2a">
+                    Client ID copied: <strong style="font-family:'JetBrains Mono',monospace">10000000000099</strong> — paste this into your <code>.env</code> file.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cf-annotation">New key appears at the bottom. Toggle it <strong>On</strong> and copy the Client ID shown.</div>
+            <div class="step-desc">After saving, your key appears in the list with state <strong>Off</strong>. Toggle it to <strong>On</strong>. Copy the <strong>Client ID</strong> — you'll need it in the next step and in your <code>.env</code> file.</div>
+          </div>
+
+          <!-- Step 4: Install in course -->
+          <div class="step-body" id="step-3">
+            <div class="step-header">
+              <span class="step-num">Step 4 of 7</span>
+              <span class="step-title">Install the tool in a course</span>
+            </div>
+            <div class="canvas-frame" aria-label="Canvas Course Settings Apps tab showing Add App dialog">
+              <div class="cf-topbar">
+                <span class="cf-topbar-logo">canvas</span>
+                <span class="cf-breadcrumb">Intro to CS</span>
+                <span class="cf-breadcrumb">Settings</span>
+                <span class="cf-breadcrumb" style="color:#2d3b45;font-weight:600">Apps</span>
+              </div>
+              <div class="cf-body">
+                <div class="cf-sidebar" aria-hidden="true">
+                  <div class="cf-nav-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                  </div>
+                  <div class="cf-nav-item active-nav">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                  </div>
+                </div>
+                <div class="cf-content">
+                  <div class="cf-page-title">External Apps</div>
+                  <div style="background:#fff;border:1px solid #c7cdd1;border-radius:4px;padding:.75rem;max-width:340px">
+                    <div style="font-size:12px;font-weight:600;margin-bottom:.5rem;color:#2d3b45">Add App</div>
+                    <div class="cf-form-group">
+                      <label class="cf-label">Configuration type</label>
+                      <input class="cf-input" value="By Client ID" readonly aria-label="Configuration type: By Client ID">
+                    </div>
+                    <div class="cf-form-group">
+                      <label class="cf-label">Client ID</label>
+                      <input class="cf-input highlight" value="10000000000099" readonly aria-label="Client ID field">
+                    </div>
+                    <div style="display:flex;gap:.4rem;margin-top:.4rem">
+                      <button class="cf-btn-primary">Submit</button>
+                      <button class="cf-btn-secondary">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cf-annotation">Paste the Client ID from Step 3 and click <strong>Submit</strong>.</div>
+            <div class="step-desc">In your course, go to <strong>Settings → Apps → + App</strong>. Choose <strong>By Client ID</strong>, paste the Client ID from Step 3, and click <strong>Submit</strong>. Confirm the installation when prompted.</div>
+          </div>
+
+          <!-- Step 5: Course navigation -->
+          <div class="step-body" id="step-4">
+            <div class="step-header">
+              <span class="step-num">Step 5 of 7</span>
+              <span class="step-title">Tool appears in course navigation</span>
+            </div>
+            <div class="canvas-frame" aria-label="Canvas course showing My LTI Tool in the left navigation">
+              <div class="cf-topbar">
+                <span class="cf-topbar-logo">canvas</span>
+                <span class="cf-breadcrumb">Intro to CS</span>
+                <span class="cf-breadcrumb" style="color:#e66000;font-weight:600">My LTI Tool</span>
+              </div>
+              <div class="cf-body">
+                <div class="cf-sidebar" aria-hidden="true">
+                  <div class="cf-nav-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                  </div>
+                  <div class="cf-nav-item highlight-nav">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    <span>Tool</span>
+                  </div>
+                </div>
+                <div style="display:flex;flex:1">
+                  <div class="cf-course-nav" aria-label="Course navigation">
+                    <div class="cf-course-nav-item">Home</div>
+                    <div class="cf-course-nav-item">Announcements</div>
+                    <div class="cf-course-nav-item">Assignments</div>
+                    <div class="cf-course-nav-item">Discussions</div>
+                    <div class="cf-course-nav-item">Grades</div>
+                    <div class="cf-course-nav-item active-course new-item">My LTI Tool</div>
+                    <div class="cf-course-nav-item">Files</div>
+                  </div>
+                  <div class="cf-content" style="display:flex;align-items:center;justify-content:center">
+                    <div style="text-align:center;color:#888">
+                      <div style="font-size:28px;margin-bottom:.35rem" aria-hidden="true">⏳</div>
+                      <div style="font-size:12px">Loading My LTI Tool...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cf-annotation">The <strong>My LTI Tool</strong> link now appears in the course left-nav. Click it to launch.</div>
+            <div class="step-desc">If you used the <code>course_navigation</code> placement, your tool appears as a link in the course left sidebar. Canvas initiates the LTI 1.3 launch sequence when the student or instructor clicks it.</div>
+          </div>
+
+          <!-- Step 6: RCE button -->
+          <div class="step-body" id="step-5">
+            <div class="step-header">
+              <span class="step-num">Step 6 of 7</span>
+              <span class="step-title">editor_button placement in the RCE</span>
+            </div>
+            <div class="canvas-frame" aria-label="Canvas Rich Content Editor showing the LTI tool button in the toolbar">
+              <div class="cf-topbar">
+                <span class="cf-topbar-logo">canvas</span>
+                <span class="cf-breadcrumb">Intro to CS</span>
+                <span class="cf-breadcrumb">Assignments</span>
+                <span class="cf-breadcrumb" style="color:#2d3b45;font-weight:600">Edit</span>
+              </div>
+              <div class="cf-body" style="flex-direction:column">
+                <div class="cf-content" style="background:#fff">
+                  <div style="margin-bottom:.4rem;font-size:12px;color:#556068">Assignment description</div>
+                  <div class="cf-rce-toolbar" role="toolbar" aria-label="Rich Content Editor toolbar">
+                    <button class="cf-rce-btn" aria-label="Bold">B</button>
+                    <button class="cf-rce-btn" aria-label="Italic"><em>I</em></button>
+                    <button class="cf-rce-btn" aria-label="Underline" style="text-decoration:underline">U</button>
+                    <div class="cf-rce-sep" role="separator"></div>
+                    <button class="cf-rce-btn" aria-label="Insert link">&#128279;</button>
+                    <button class="cf-rce-btn" aria-label="Insert image">&#128247;</button>
+                    <div class="cf-rce-sep" role="separator"></div>
+                    <button class="cf-rce-btn highlight-rce" aria-label="Insert from My LTI Tool" title="My LTI Tool">&#9881; My Tool</button>
+                    <div class="cf-rce-sep" role="separator"></div>
+                    <button class="cf-rce-btn" aria-label="More options">&#8943;</button>
+                  </div>
+                  <div class="cf-rce-body" aria-label="Assignment description editor">Complete the activity below and submit your reflection...</div>
+                </div>
+              </div>
+            </div>
+            <div class="cf-annotation">The <strong>&#9881; My Tool</strong> button appears in the RCE toolbar. Clicking it opens your tool in a Canvas modal.</div>
+            <div class="step-desc">If you used the <code>editor_button</code> placement, instructors see your tool's button in the Rich Content Editor toolbar. Clicking it opens your tool in a Canvas-native modal and lets you embed content via Deep Linking.</div>
+          </div>
+
+          <!-- Step 7: Tool live -->
+          <div class="step-body" id="step-6">
+            <div class="step-header">
+              <span class="step-num">Step 7 of 7</span>
+              <span class="step-title">Your tool is live inside Canvas</span>
+            </div>
+            <div class="canvas-frame" aria-label="Canvas course with LTI tool loaded in an iframe">
+              <div class="cf-topbar">
+                <span class="cf-topbar-logo">canvas</span>
+                <span class="cf-breadcrumb">Intro to CS</span>
+                <span class="cf-breadcrumb" style="color:#e66000;font-weight:600">My LTI Tool</span>
+              </div>
+              <div class="cf-body">
+                <div class="cf-sidebar" aria-hidden="true">
+                  <div class="cf-nav-item highlight-nav">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  </div>
+                </div>
+                <div style="display:flex;flex:1">
+                  <div class="cf-course-nav" aria-label="Course navigation">
+                    <div class="cf-course-nav-item">Home</div>
+                    <div class="cf-course-nav-item">Assignments</div>
+                    <div class="cf-course-nav-item active-course new-item">My LTI Tool</div>
+                    <div class="cf-course-nav-item">Grades</div>
+                  </div>
+                  <div class="cf-content" style="padding:.5rem">
+                    <div class="cf-iframe" aria-label="LTI tool iframe content">
+                      <div class="cf-iframe-bar">https://yourtool.com/ (LTI iframe)</div>
+                      <div style="padding:.25rem 0">
+                        <h1 style="font-size:15px;font-weight:700;margin-bottom:.25rem;color:#2d3b45">Welcome, Jamie Chen</h1>
+                        <p style="font-size:12px;color:#556068;margin-bottom:.4rem">Course: Intro to Computer Science &nbsp;·&nbsp; Role: Student</p>
+                        <div style="display:flex;gap:.5rem">
+                          <button class="cf-btn-primary" style="font-size:11px">Start Activity</button>
+                          <button class="cf-btn-secondary" style="font-size:11px">View History</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cf-annotation">Your <code>index.html</code> is rendered in an iframe with the student's name, course, and role injected from the JWT.</div>
+            <div class="step-desc"><strong>Done!</strong> Canvas completed the LTI 1.3 launch handshake and loaded your tool inside an iframe. The JWT token gave you the user's name, course title, and role — which you injected in <code>routes/launch.js</code>.</div>
+          </div>
+
+          <!-- Step nav -->
+          <div class="step-nav">
+            <button class="step-nav-btn" id="step-prev" onclick="stepNav(-1)" disabled aria-label="Go to previous step">&#8592; Prev</button>
+            <span id="step-counter" aria-live="polite" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted);align-self:center">1 / 7</span>
+            <button class="step-nav-btn primary" id="step-next" onclick="stepNav(1)" aria-label="Go to next step">Next &#8594;</button>
+          </div>
+        </div>
+
+      </div><!-- /.stepper-wrap -->
+
+      <div class="callout info" role="note" aria-label="Note" style="margin-top:1.5rem">
+        <span class="callout-icon" aria-hidden="true">ℹ</span>
+        <span>The <strong>course_navigation</strong> and <strong>editor_button</strong> placements are the two most common. Both are already wired up in the <code>lti.config.json</code> shown in the App Structure tab.</span>
+      </div>
+    </section>
+
+    <!-- Panel 9: Apply Plugin -->
+    <section role="tabpanel" id="panel-apply" aria-labelledby="tab-apply" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 09</p>
+      <h2>Apply Your Plugin in Canvas</h2>
+      <p>Follow these steps end-to-end — from running the app you built in Tab 01 to seeing it live inside a Canvas course. Each step is labeled by <em>where</em> you do the work.</p>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.5rem;font-size:.82rem;align-items:center">
+        <span style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.72rem">Do this in:</span>
+        <span class="where-tag where-code">Your code</span>
+        <span class="where-tag where-browser">Terminal / browser</span>
+        <span class="where-tag where-canvas">Canvas UI</span>
+      </div>
+
+      <!-- Phase 1 -->
+      <div class="phase-heading" aria-hidden="true">
+        <span class="phase-label">Phase 1 — Run your app</span>
+        <div class="phase-line"></div>
+      </div>
+
+      <ol class="checklist" aria-label="Phase 1: Run your app">
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">1</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-code">Your code</span> Fill in your <code>.env</code> file</p>
+              <p class="check-desc">Copy <code>.env.example</code> to <code>.env</code> and set <code>LTI_SECRET</code> and <code>MONGO_URL</code>. Leave the Canvas fields blank for now — you'll fill them in after Step 4.</p>
+              <div class="code-wrap">
+                <div class="code-header"><span class="code-lang" aria-hidden="true">bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy env setup command">Copy</button></div>
+                <pre aria-label="Copy .env.example to .env">cp .env.example .env
+<span class="cm"># then open .env and fill in LTI_SECRET and MONGO_URL</span></pre>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">2</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-browser">Terminal</span> Install dependencies and start the server</p>
+              <p class="check-desc">Run the app locally. It will start on port 3000 and connect to MongoDB.</p>
+              <div class="code-wrap">
+                <div class="code-header"><span class="code-lang" aria-hidden="true">bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy npm install and start commands">Copy</button></div>
+                <pre aria-label="Install and start the LTI server">npm install
+npm run dev</pre>
+              </div>
+              <div class="check-note" role="note">
+                <span class="check-note-icon" aria-hidden="true">ℹ</span>
+                <span>You should see <strong>LTI tool running on port 3000</strong> in the terminal. If MongoDB isn't running locally, start it with <code>mongod</code> or use a free MongoDB Atlas cluster.</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">3</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-browser">Terminal</span> Expose your server with ngrok</p>
+              <p class="check-desc">Canvas requires HTTPS. ngrok creates a public HTTPS URL that tunnels to your local server. Keep this running the whole time you're developing.</p>
+              <div class="code-wrap">
+                <div class="code-header"><span class="code-lang" aria-hidden="true">bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy ngrok command">Copy</button></div>
+                <pre aria-label="Start ngrok tunnel on port 3000">ngrok http 3000</pre>
+              </div>
+              <div class="result-box" aria-label="ngrok output fields to note">
+                <div class="result-item">
+                  <span class="result-label">Your public URL</span>
+                  <span class="result-value">https://abc123.ngrok.io</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">Use this as your base URL</span>
+                  <span class="result-value">in all Canvas fields</span>
+                </div>
+              </div>
+              <div class="check-note check-warn" role="note">
+                <span class="check-note-icon" aria-hidden="true">⚠</span>
+                <span>The ngrok URL changes every restart on the free plan. For a persistent URL use <code>ngrok http --domain=yourname.ngrok-free.app 3000</code> (paid) or deploy to a real server.</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+      </ol>
+
+      <!-- Phase 2 -->
+      <div class="phase-heading" aria-hidden="true">
+        <span class="phase-label">Phase 2 — Register in Canvas</span>
+        <div class="phase-line"></div>
+      </div>
+
+      <ol class="checklist" aria-label="Phase 2: Register in Canvas" start="4">
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">4</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-canvas">Canvas</span> Create a Developer Key</p>
+              <p class="check-desc">Navigate to the Developer Keys admin screen:</p>
+              <div class="check-path" aria-label="Navigation path: Admin, then Developer Keys, then plus Developer Key, then LTI Key">
+                <span class="check-path-seg">Admin</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">Developer Keys</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">+ Developer Key</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">LTI Key</span>
+              </div>
+              <p class="check-desc">Choose <strong>Paste JSON</strong> as the method, then paste the contents of <code>config/lti.config.json</code>. Replace every <code>https://yourtool.com</code> with your ngrok URL first.</p>
+              <div class="code-wrap">
+                <div class="code-header"><span class="code-lang" aria-hidden="true">bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy sed replace command">Copy</button></div>
+                <pre aria-label="Replace placeholder URL with your ngrok URL in the JSON config">sed 's|https://yourtool.com|https://abc123.ngrok.io|g' \
+  config/lti.config.json | pbcopy
+<span class="cm"># (pbcopy copies to clipboard on macOS; use xclip on Linux)</span></pre>
+              </div>
+              <div class="check-note" role="note">
+                <span class="check-note-icon" aria-hidden="true">ℹ</span>
+                <span>Give the key a clear name like <strong>My LTI Tool (dev)</strong> so you can tell it apart from future production keys.</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">5</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-canvas">Canvas</span> Enable the key and copy the Client ID</p>
+              <p class="check-desc">After saving, your key appears at the bottom of the list with state <strong>Off</strong>. Toggle it to <strong>On</strong>, then copy the numeric <strong>Client ID</strong> shown in the table.</p>
+              <div class="result-box" aria-label="Values to copy from Canvas Developer Keys">
+                <div class="result-item">
+                  <span class="result-label">Client ID example</span>
+                  <span class="result-value">10000000000099</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">Save this to</span>
+                  <span class="result-value">CANVAS_CLIENT_ID in .env</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">6</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-code">Your code</span> Update <code>.env</code> with Canvas values</p>
+              <p class="check-desc">Fill in the remaining Canvas fields. The auth and token URLs follow a standard pattern — swap in your institution's Canvas domain.</p>
+              <div class="code-wrap">
+                <div class="code-header"><span class="code-lang" aria-hidden="true">.env</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy Canvas .env values">Copy</button></div>
+                <pre aria-label="Canvas environment variables to add to .env"><span class="cm"># Your Canvas instance</span>
+<span class="prop">CANVAS_URL</span>=<span class="str">https://yourschool.instructure.com</span>
+
+<span class="cm"># Paste the Client ID from Step 5</span>
+<span class="prop">CANVAS_CLIENT_ID</span>=<span class="str">10000000000099</span>
+
+<span class="cm"># Standard Canvas LTI 1.3 endpoints — replace yourschool</span>
+<span class="prop">CANVAS_AUTH_URL</span>=<span class="str">https://yourschool.instructure.com/api/lti/authorize_redirect</span>
+<span class="prop">CANVAS_TOKEN_URL</span>=<span class="str">https://yourschool.instructure.com/login/oauth2/token</span>
+<span class="prop">CANVAS_JWK_URL</span>=<span class="str">https://yourschool.instructure.com/api/lti/security/jwks</span></pre>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">7</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-browser">Terminal</span> Restart your server</p>
+              <p class="check-desc">The server reads <code>.env</code> at startup. Restart it so it picks up the new Canvas credentials and registers the platform.</p>
+              <div class="code-wrap">
+                <div class="code-header"><span class="code-lang" aria-hidden="true">bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy restart command">Copy</button></div>
+                <pre aria-label="Restart the dev server">npm run dev</pre>
+              </div>
+              <div class="check-note" role="note">
+                <span class="check-note-icon" aria-hidden="true">ℹ</span>
+                <span>On first boot, ltijs calls <code>registerPlatform()</code> and stores the Canvas platform record in MongoDB. Subsequent restarts skip this if the record already exists.</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+      </ol>
+
+      <!-- Phase 3 -->
+      <div class="phase-heading" aria-hidden="true">
+        <span class="phase-label">Phase 3 — Install in a course</span>
+        <div class="phase-line"></div>
+      </div>
+
+      <ol class="checklist" aria-label="Phase 3: Install in a course" start="8">
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">8</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-canvas">Canvas</span> Add the app to a course</p>
+              <p class="check-desc">Open the course you want to test in, then navigate:</p>
+              <div class="check-path" aria-label="Navigation path: Settings, then Apps, then plus App, then By Client ID">
+                <span class="check-path-seg">Settings</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">Apps</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">+ App</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">By Client ID</span>
+              </div>
+              <p class="check-desc">Paste the Client ID from Step 5 into the field and click <strong>Submit</strong>. Canvas will show a confirmation dialog — click <strong>Install</strong>.</p>
+              <div class="check-note" role="note">
+                <span class="check-note-icon" aria-hidden="true">ℹ</span>
+                <span>If you don't see <strong>+ App</strong>, you may need the <em>Manage Apps</em> permission in the course. Ask your Canvas admin or test in a sandbox course where you have Teacher or Admin role.</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">9</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-canvas">Canvas</span> Verify the app appears in External Apps</p>
+              <p class="check-desc">Stay on the Apps tab. Your tool should now appear in the <strong>External Apps</strong> list. If it shows a warning about configuration, double-check that your ngrok URL in the JSON exactly matches your running tunnel.</p>
+              <div class="check-path" aria-label="Navigation path: Settings, then Apps tab">
+                <span class="check-path-seg">Settings</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">Apps</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">External Apps list</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+      </ol>
+
+      <!-- Phase 4 -->
+      <div class="phase-heading" aria-hidden="true">
+        <span class="phase-label">Phase 4 — Test the launch</span>
+        <div class="phase-line"></div>
+      </div>
+
+      <ol class="checklist" aria-label="Phase 4: Test the launch" start="10">
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">10</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-canvas">Canvas</span> Click your tool in the course navigation</p>
+              <p class="check-desc">Go to the course home page. Your tool link (<strong>My LTI Tool</strong>) should appear in the left sidebar under the course navigation. Click it.</p>
+              <p class="check-desc">Canvas will start the LTI 1.3 OIDC launch handshake: it POSTs to your <code>/login</code> endpoint, redirects to Canvas's auth server, then delivers the verified JWT to your app route (<code>/</code>) where <code>onConnect</code> fires.</p>
+              <div class="check-note" role="note">
+                <span class="check-note-icon" aria-hidden="true">ℹ</span>
+                <span>If the tool doesn't appear in the nav, go to <strong>Settings → Navigation</strong> and drag <strong>My LTI Tool</strong> from the hidden items list to the visible list, then save.</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">11</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-browser">Browser</span> Confirm you see the tool UI with user data</p>
+              <p class="check-desc">If everything worked, your <code>public/index.html</code> loads inside a Canvas iframe showing the student's real name, course title, and role — all injected from the JWT by <code>routes/launch.js</code>.</p>
+              <div class="result-box" aria-label="Expected output in the tool iframe">
+                <div class="result-item">
+                  <span class="result-label">Expected output</span>
+                  <span class="result-value">Welcome, [real name]</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">Course shown</span>
+                  <span class="result-value">[real course title]</span>
+                </div>
+                <div class="result-item">
+                  <span class="result-label">Role shown</span>
+                  <span class="result-value">Student or Instructor</span>
+                </div>
+              </div>
+              <div class="check-note check-success" role="note">
+                <span class="check-note-icon" aria-hidden="true">✓</span>
+                <span>If you see real user data, your LTI 1.3 plugin is fully wired up and working in Canvas.</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li>
+          <div class="check-step">
+            <span class="check-num" aria-hidden="true">12</span>
+            <div class="check-body">
+              <p class="check-title"><span class="where-tag where-canvas">Canvas</span> Test the editor_button placement (optional)</p>
+              <p class="check-desc">Open any assignment or page in the Rich Content Editor. Your tool's <strong>⚙ My Tool</strong> button should appear in the RCE toolbar. Click it — Canvas opens your tool in a modal. When you return content via Deep Linking, it embeds directly in the editor body.</p>
+              <div class="check-path" aria-label="Navigation path for testing RCE button">
+                <span class="check-path-seg">Assignments</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">+ Assignment</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">Description editor</span>
+                <span class="check-path-sep" aria-hidden="true">›</span>
+                <span class="check-path-seg">⚙ My Tool button</span>
+              </div>
+            </div>
+          </div>
+        </li>
+
+      </ol>
+
+      <!-- Troubleshooting -->
+      <hr class="divider-line">
+      <h3>Common errors and fixes</h3>
+
+      <div class="table-wrap">
+        <table aria-label="Common LTI errors and their fixes">
+          <caption>Troubleshooting guide</caption>
+          <thead><tr><th scope="col">Error / symptom</th><th scope="col">Most likely cause</th><th scope="col">Fix</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Blank iframe / infinite spinner</td>
+              <td>ngrok URL has changed since you registered the key</td>
+              <td>Restart ngrok, update the target_link_uri and oidc_initiation_url in the Developer Key, restart your server</td>
+            </tr>
+            <tr>
+              <td>Invalid_client error</td>
+              <td>Wrong Client ID in <code>.env</code></td>
+              <td>Re-copy the Client ID from Admin → Developer Keys and paste into <code>CANVAS_CLIENT_ID</code></td>
+            </tr>
+            <tr>
+              <td>Nonce already used</td>
+              <td>MongoDB not running or ltijs session DB is stale</td>
+              <td>Restart MongoDB, then restart your server — ltijs will clear stale nonces</td>
+            </tr>
+            <tr>
+              <td>Tool not in course nav</td>
+              <td>Navigation item is hidden</td>
+              <td>Course Settings → Navigation → drag tool from hidden list to visible list → Save</td>
+            </tr>
+            <tr>
+              <td>403 Forbidden on launch</td>
+              <td>Tool is installed but key is still toggled Off</td>
+              <td>Admin → Developer Keys → toggle your key to <strong>On</strong></td>
+            </tr>
+            <tr>
+              <td>JWT verification failed</td>
+              <td>CANVAS_JWK_URL is wrong or the Canvas domain differs</td>
+              <td>Verify the JWK URL in your browser — it should return a JSON object with a <code>keys</code> array</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- Panel 10: Two Approaches -->
+    <section role="tabpanel" id="panel-twoways" aria-labelledby="tab-twoways" tabindex="0">
+      <p class="section-eyebrow" aria-hidden="true">Section 10</p>
+      <h2>Two Ways to Build an LTI Tool</h2>
+      <p>You don't always need the full ltijs setup. Here are both approaches — pick the one that fits what you're building.</p>
+
+      <div class="approach-grid" role="list" aria-label="Two LTI approaches compared">
+        <div class="approach-card lightweight" role="listitem">
+          <div class="approach-head">Lightweight — single file</div>
+          <div class="approach-body">
+            <p>A minimal PHP or Node.js file. No database, no session library. You verify the JWT yourself using a small library.</p>
+            <ul class="approach-list" aria-label="Lightweight approach properties">
+              <li>Runs on any shared host (cPanel, Dreamhost, etc.)</li>
+              <li>No MongoDB or database needed</li>
+              <li>One or two files total</li>
+              <li>Good for read-only tools — show info, embed content</li>
+              <li>Not ideal for storing grades or user data</li>
+            </ul>
+          </div>
+        </div>
+        <div class="approach-card fullserver" role="listitem">
+          <div class="approach-head">Full server — ltijs + Node.js</div>
+          <div class="approach-body">
+            <p>The complete setup from Tab 01. ltijs handles OIDC, sessions, nonces, and Deep Linking automatically.</p>
+            <ul class="approach-list" aria-label="Full server approach properties">
+              <li>Needs a persistent Node.js server + MongoDB</li>
+              <li>Handles complex flows automatically</li>
+              <li>Supports grade passback (LTI Advantage)</li>
+              <li>Good for tools that store data or send grades back</li>
+              <li>More setup but far more capable</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Decision guide -->
+      <h3>Which should you use?</h3>
+      <div class="decision-box" aria-label="Decision guide for choosing an approach">
+        <div class="decision-row"><span class="decision-q">I just want to show content or embed a widget</span><span class="decision-a light">Lightweight</span></div>
+        <div class="decision-row"><span class="decision-q">I need to know who the student is and what course they're in</span><span class="decision-a either">Either</span></div>
+        <div class="decision-row"><span class="decision-q">I want to save data or track progress</span><span class="decision-a full">Full server</span></div>
+        <div class="decision-row"><span class="decision-q">I need to send grades back to the Canvas gradebook</span><span class="decision-a full">Full server</span></div>
+        <div class="decision-row"><span class="decision-q">I'm on shared hosting (cPanel, Dreamhost)</span><span class="decision-a light">Lightweight (PHP)</span></div>
+        <div class="decision-row"><span class="decision-q">I have a VPS or cloud server</span><span class="decision-a either">Either</span></div>
+        <div class="decision-row"><span class="decision-q">I want the quickest possible setup</span><span class="decision-a light">Lightweight</span></div>
+      </div>
+
+      <!-- Lightweight: PHP -->
+      <h3>Lightweight approach — PHP (single file)</h3>
+      <p>Upload one file to any PHP host. Install one dependency with Composer. Point Canvas at its URL. Done.</p>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang" aria-hidden="true">bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy composer install command">Copy</button></div>
+        <pre aria-label="Install PHP JWT library">composer require firebase/php-jwt</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang" aria-hidden="true">php — lti.php</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy PHP LTI file">Copy</button></div>
+        <pre aria-label="Single-file PHP LTI tool">&lt;?php
+<span class="cm">// lti.php — upload to any PHP host
+// Set these in your hosting control panel as environment variables,
+// or replace the getenv() calls with your values directly.</span>
+$CLIENT_ID  = getenv(<span class="str">'CANVAS_CLIENT_ID'</span>);
+$CANVAS_URL = getenv(<span class="str">'CANVAS_URL'</span>);
+$AUTH_URL   = getenv(<span class="str">'CANVAS_AUTH_URL'</span>);
+$JWK_URL    = getenv(<span class="str">'CANVAS_JWK_URL'</span>);
+$TOOL_URL   = getenv(<span class="str">'TOOL_URL'</span>);   <span class="cm">// full URL to this file</span>
+
+<span class="kw">require_once</span> __DIR__ . <span class="str">'/vendor/autoload.php'</span>;
+
+<span class="cm">// ── Step 2: Canvas POSTs the signed JWT here ──────────────────</span>
+<span class="kw">if</span> ($_SERVER[<span class="str">'REQUEST_METHOD'</span>] === <span class="str">'POST'</span> &amp;&amp; isset($_POST[<span class="str">'id_token'</span>])) {
+
+    $jwks   = json_decode(file_get_contents($JWK_URL), true);
+    $keySet = \Firebase\JWT\JWK::parseKeySet($jwks);
+
+    <span class="kw">try</span> {
+        $token = \Firebase\JWT\JWT::decode($_POST[<span class="str">'id_token'</span>], $keySet);
+
+        $user   = $token-&gt;name ?? <span class="str">'Student'</span>;
+        $ctx    = $token-&gt;{<span class="str">'https://purl.imsglobal.org/spec/lti/claim/context'</span>} ?? null;
+        $course = $ctx-&gt;title ?? <span class="str">'Unknown course'</span>;
+
+        <span class="cm">// ── Your tool UI goes here ──────────────────────────────────</span>
+        <span class="kw">echo</span> <span class="str">"&lt;!DOCTYPE html&gt;&lt;html lang='en'&gt;&lt;body&gt;
+          &lt;h1&gt;Hello, "</span> . htmlspecialchars($user) . <span class="str">"!&lt;/h1&gt;
+          &lt;p&gt;Course: "</span> . htmlspecialchars($course) . <span class="str">"&lt;/p&gt;
+        &lt;/body&gt;&lt;/html&gt;"</span>;
+
+    } <span class="kw">catch</span> (Exception $e) {
+        http_response_code(<span class="num">403</span>);
+        <span class="kw">echo</span> <span class="str">'Launch failed: '</span> . htmlspecialchars($e-&gt;getMessage());
+    }
+    <span class="kw">exit</span>;
+}
+
+<span class="cm">// ── Step 1: Canvas calls this to start the launch ─────────────</span>
+<span class="kw">if</span> (isset($_GET[<span class="str">'login_hint'</span>])) {
+    session_start();
+    $nonce = bin2hex(random_bytes(<span class="num">16</span>));
+    $_SESSION[<span class="str">'lti_nonce'</span>] = $nonce;
+
+    $params = http_build_query([
+        <span class="str">'scope'</span>            =&gt; <span class="str">'openid'</span>,
+        <span class="str">'response_type'</span>    =&gt; <span class="str">'id_token'</span>,
+        <span class="str">'response_mode'</span>    =&gt; <span class="str">'form_post'</span>,
+        <span class="str">'prompt'</span>           =&gt; <span class="str">'none'</span>,
+        <span class="str">'client_id'</span>        =&gt; $CLIENT_ID,
+        <span class="str">'redirect_uri'</span>     =&gt; $TOOL_URL,
+        <span class="str">'login_hint'</span>       =&gt; $_GET[<span class="str">'login_hint'</span>],
+        <span class="str">'lti_message_hint'</span> =&gt; $_GET[<span class="str">'lti_message_hint'</span>] ?? <span class="str">''</span>,
+        <span class="str">'state'</span>            =&gt; bin2hex(random_bytes(<span class="num">16</span>)),
+        <span class="str">'nonce'</span>            =&gt; $nonce,
+    ]);
+
+    header(<span class="str">'Location: '</span> . $AUTH_URL . <span class="str">'?'</span> . $params);
+    <span class="kw">exit</span>;
+}
+
+<span class="kw">echo</span> <span class="str">'LTI tool ready.'</span>;</pre>
+      </div>
+
+      <div class="callout info" role="note" aria-label="Note">
+        <span class="callout-icon" aria-hidden="true">ℹ</span>
+        <span>Register this in Canvas Developer Keys with <strong>Target Link URI</strong> and <strong>OIDC Initiation URL</strong> both pointing to the same file URL (e.g. <code>https://yourdomain.com/lti.php</code>). The file handles both steps based on whether the request is a GET or POST.</span>
+      </div>
+
+      <!-- Lightweight: Node.js without ltijs -->
+      <h3>Lightweight approach — Node.js without ltijs</h3>
+      <p>Same idea in Node.js. No ltijs, no MongoDB — just <code>express</code> and <code>jose</code>. Runs on any Node.js host.</p>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang" aria-hidden="true">bash</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy install command for lightweight Node.js">Copy</button></div>
+        <pre aria-label="Install dependencies for lightweight Node.js LTI">npm install express jose dotenv</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang" aria-hidden="true">javascript — server.js</span><button class="copy-btn" onclick="copyCode(this)" aria-label="Copy lightweight Node.js LTI server">Copy</button></div>
+        <pre aria-label="Lightweight Node.js LTI tool without ltijs"><span class="kw">import</span> express    <span class="kw">from</span> <span class="str">'express'</span>
+<span class="kw">import</span> * <span class="kw">as</span> jose  <span class="kw">from</span> <span class="str">'jose'</span>
+<span class="kw">import</span>             <span class="str">'dotenv/config'</span>
+
+<span class="kw">const</span> app    = <span class="fn">express</span>()
+<span class="kw">const</span> nonces = <span class="kw">new</span> Set()   <span class="cm">// in-memory nonce store</span>
+
+app.<span class="fn">use</span>(express.<span class="fn">urlencoded</span>({ extended: <span class="kw">true</span> }))
+
+<span class="cm">// ── Step 1: Canvas calls /login to start the launch ───────────</span>
+app.<span class="fn">get</span>(<span class="str">'/login'</span>, (req, res) => {
+    <span class="kw">const</span> nonce = crypto.<span class="fn">randomUUID</span>()
+    nonces.<span class="fn">add</span>(nonce)
+    <span class="fn">setTimeout</span>(() => nonces.<span class="fn">delete</span>(nonce), <span class="num">60_000</span>) <span class="cm">// expire after 60 s</span>
+
+    <span class="kw">const</span> params = <span class="kw">new</span> <span class="fn">URLSearchParams</span>({
+        scope:            <span class="str">'openid'</span>,
+        response_type:    <span class="str">'id_token'</span>,
+        response_mode:    <span class="str">'form_post'</span>,
+        prompt:           <span class="str">'none'</span>,
+        client_id:        process.env.CANVAS_CLIENT_ID,
+        redirect_uri:     process.env.TOOL_URL,
+        login_hint:       req.query.login_hint,
+        lti_message_hint: req.query.lti_message_hint ?? <span class="str">''</span>,
+        state:            crypto.<span class="fn">randomUUID</span>(),
+        nonce,
+    })
+    res.<span class="fn">redirect</span>(process.env.CANVAS_AUTH_URL + <span class="str">'?'</span> + params)
+})
+
+<span class="cm">// ── Step 2: Canvas POSTs the signed JWT here ──────────────────</span>
+app.<span class="fn">post</span>(<span class="str">'/'</span>, <span class="kw">async</span> (req, res) => {
+    <span class="kw">try</span> {
+        <span class="kw">const</span> JWKS = jose.<span class="fn">createRemoteJWKSet</span>(<span class="kw">new</span> <span class="fn">URL</span>(process.env.CANVAS_JWK_URL))
+
+        <span class="kw">const</span> { payload } = <span class="kw">await</span> jose.<span class="fn">jwtVerify</span>(req.body.id_token, JWKS, {
+            issuer:   process.env.CANVAS_URL,
+            audience: process.env.CANVAS_CLIENT_ID,
+        })
+
+        <span class="cm">// Verify nonce to prevent replay attacks</span>
+        <span class="kw">if</span> (!nonces.<span class="fn">has</span>(payload.nonce)) <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">403</span>).<span class="fn">send</span>(<span class="str">'Invalid nonce'</span>)
+        nonces.<span class="fn">delete</span>(payload.nonce)
+
+        <span class="kw">const</span> user   = payload.name ?? <span class="str">'Student'</span>
+        <span class="kw">const</span> course = payload[<span class="str">'https://purl.imsglobal.org/spec/lti/claim/context'</span>]?.title ?? <span class="str">'Unknown'</span>
+        <span class="kw">const</span> roles  = payload[<span class="str">'https://purl.imsglobal.org/spec/lti/claim/roles'</span>] ?? []
+
+        <span class="cm">// ── Your tool UI goes here ──────────────────────────────────</span>
+        res.<span class="fn">send</span>(<span class="str">`&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;&lt;body&gt;
+  &lt;h1&gt;Hello, </span>${user}<span class="str">!&lt;/h1&gt;
+  &lt;p&gt;Course: </span>${course}<span class="str">&lt;/p&gt;
+  &lt;p&gt;Role: </span>${roles.<span class="fn">map</span>(r => r.<span class="fn">split</span>(<span class="str">'#'</span>).<span class="fn">pop</span>()).<span class="fn">join</span>(<span class="str">', '</span>)}<span class="str">&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;`</span>)
+
+    } <span class="kw">catch</span> (err) {
+        res.<span class="fn">status</span>(<span class="num">403</span>).<span class="fn">send</span>(<span class="str">'Launch failed: '</span> + err.message)
+    }
+})
+
+app.<span class="fn">listen</span>(<span class="num">3000</span>, () => console.<span class="fn">log</span>(<span class="str">'LTI tool ready on port 3000'</span>))</pre>
+      </div>
+
+      <div class="callout warn" role="note" aria-label="Warning">
+        <span class="callout-icon" aria-hidden="true">⚠</span>
+        <span>The in-memory nonce store resets on every server restart. For production use a persistent store like Redis or a database table to prevent replay attacks across restarts.</span>
+      </div>
+
+      <!-- What changes between approaches -->
+      <h3>What changes in Canvas registration</h3>
+      <p>Both approaches use the same Canvas Developer Key process. The only difference is which URLs you enter.</p>
+      <div class="table-wrap">
+        <table aria-label="Canvas registration differences between approaches">
+          <caption>Developer Key field values per approach</caption>
+          <thead><tr><th scope="col">Field</th><th scope="col">Lightweight (PHP)</th><th scope="col">Lightweight (Node.js)</th><th scope="col">Full server (ltijs)</th></tr></thead>
+          <tbody>
+            <tr><td>Target Link URI</td><td>https://domain.com/lti.php</td><td>https://domain.com/</td><td>https://domain.com/</td></tr>
+            <tr><td>OIDC Initiation URL</td><td>https://domain.com/lti.php</td><td>https://domain.com/login</td><td>https://domain.com/login</td></tr>
+            <tr><td>JWK Method</td><td>Public JWK URL → /keys (or omit)</td><td>Public JWK URL → /keys (or omit)</td><td>Public JWK URL → /keys</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Panel 11: Simple Summary -->
+    <section role="tabpanel" id="panel-simple" aria-labelledby="tab-simple" tabindex="0">
+      <div class="simple-wrap">
+
+        <div class="simple-hero">
+          <span class="simple-hero-emoji" aria-hidden="true">🏫</span>
+          <h2>What Is All This? Plain English.</h2>
+          <p>Everything in this guide explained simply — like you're 10 years old and just want to know what's going on.</p>
+        </div>
+
+        <!-- What is Canvas -->
+        <div class="simple-section">
+          <p class="simple-heading" aria-level="3" role="heading"><span class="simple-heading-emoji" aria-hidden="true">🏢</span> What is Canvas?</p>
+          <div class="simple-analogy">
+            Canvas is like a <strong>giant school building on the internet</strong>. Students and teachers use it every day — to turn in homework, read lessons, see grades, and talk to each other. It lives on a website, not on your computer.
+          </div>
+        </div>
+
+        <!-- What is LTI -->
+        <div class="simple-section">
+          <p class="simple-heading" aria-level="3" role="heading"><span class="simple-heading-emoji" aria-hidden="true">🚪</span> What is an LTI plugin?</p>
+          <div class="simple-analogy">
+            Imagine the school building already has classrooms, a gym, and a cafeteria. But you want to add a brand new <strong>science lab</strong> that wasn't there before. An LTI plugin is that science lab — a new room you built yourself and attached to the building. When a student clicks your room's door in Canvas, it opens right there on the page inside a little window.
+          </div>
+          <p style="font-size:.95rem;color:var(--muted);margin-top:.75rem">The important thing: <strong>your room lives somewhere else</strong> — on your own computer or a rented computer on the internet. Canvas just knows the address of your room and shows it inside a frame.</p>
+        </div>
+
+        <!-- What is a server -->
+        <div class="simple-section">
+          <p class="simple-heading" aria-level="3" role="heading"><span class="simple-heading-emoji" aria-hidden="true">💻</span> What is "a server"?</p>
+          <div class="simple-analogy">
+            A server is just <strong>a computer that's always switched on and connected to the internet</strong>, so anyone can visit it any time. When you rent one, you put your code on it and it runs 24 hours a day. Canvas talks to your server every time a student opens your plugin.
+          </div>
+        </div>
+
+        <!-- The hall pass / JWT -->
+        <div class="simple-section">
+          <p class="simple-heading" aria-level="3" role="heading"><span class="simple-heading-emoji" aria-hidden="true">🪪</span> The hall pass (what is a JWT?)</p>
+          <div class="simple-analogy">
+            Before Canvas opens your room to a student, it gives your server a <strong>sealed hall pass</strong>. The hall pass has the student's name, their course, and their role (student or teacher) written inside — and Canvas signs it with a secret stamp so nobody can fake it. Your server checks the stamp, reads the hall pass, and knows exactly who it's talking to.
+          </div>
+          <p style="font-size:.95rem;color:var(--muted);margin-top:.75rem">That hall pass is called a <strong>JWT</strong> (JSON Web Token). The secret stamp uses math to make it impossible to fake.</p>
+        </div>
+
+        <!-- The two ways -->
+        <div class="simple-section">
+          <p class="simple-heading" aria-level="3" role="heading"><span class="simple-heading-emoji" aria-hidden="true">🔧</span> The two ways to build a plugin</p>
+
+          <div class="simple-compare" role="list" aria-label="Two ways to build an LTI plugin">
+            <div class="simple-compare-card sc-light" role="listitem">
+              <div class="simple-compare-head">🪶 The Light Way</div>
+              <div class="simple-compare-body">
+                <strong>One or two files. Simple hosting.</strong>
+                Like a <strong>portable classroom</strong> you roll in on wheels. Quick to set up. Works on cheap web hosting. Good for showing information to students. Can't save a lot of data by itself.
+              </div>
+            </div>
+            <div class="simple-compare-card sc-full" role="listitem">
+              <div class="simple-compare-head">🏗️ The Full Way</div>
+              <div class="simple-compare-body">
+                <strong>A whole project with a database.</strong>
+                Like a <strong>real built-in lab</strong> with plumbing and electricity. More work to set up but can do everything — remember students, save their work, send grades back to Canvas.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- What you actually do - 5 steps -->
+        <div class="simple-section">
+          <p class="simple-heading" aria-level="3" role="heading"><span class="simple-heading-emoji" aria-hidden="true">✅</span> What you actually do — 5 steps</p>
+          <ol class="simple-steps" aria-label="Five steps to build and install an LTI plugin">
+            <li>
+              <span class="simple-step-num" aria-hidden="true">1</span>
+              <span><strong>Write your tool.</strong> Build a web page or app that does what you want. It can be as simple as one PHP file or as complex as a full Node.js app.</span>
+            </li>
+            <li>
+              <span class="simple-step-num" aria-hidden="true">2</span>
+              <span><strong>Put it on the internet.</strong> Upload your files to a web host so it has a public address — like <code>https://mytool.com</code>. It must have HTTPS (the padlock).</span>
+            </li>
+            <li>
+              <span class="simple-step-num" aria-hidden="true">3</span>
+              <span><strong>Tell Canvas your address.</strong> Go into Canvas admin, create a Developer Key, and paste in your tool's URL. This is like giving Canvas your room's phone number.</span>
+            </li>
+            <li>
+              <span class="simple-step-num" aria-hidden="true">4</span>
+              <span><strong>Add it to a course.</strong> Go to the course settings and install the tool using the ID Canvas gave you. It shows up as a link in the course menu.</span>
+            </li>
+            <li>
+              <span class="simple-step-num" aria-hidden="true">5</span>
+              <span><strong>Click it in Canvas.</strong> When a student clicks your tool, Canvas does the hall pass handshake with your server, and your page loads inside a Canvas window. Done!</span>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Quick questions -->
+        <div class="simple-section">
+          <p class="simple-heading" aria-level="3" role="heading"><span class="simple-heading-emoji" aria-hidden="true">❓</span> Quick questions</p>
+
+          <div class="simple-qa">
+            <p class="simple-q">Do I need to know how to code?</p>
+            <p class="simple-a">Yes — at least a little. You need to write a web page (HTML) and a small server script (PHP or JavaScript). The code in this guide gives you a working starting point you can copy and change.</p>
+
+            <p class="simple-q">Does my plugin live inside Canvas?</p>
+            <p class="simple-a">No. Your plugin always lives on your own server. Canvas just opens a window to it — like how a web page can show a YouTube video inside it even though the video lives on YouTube's servers.</p>
+
+            <p class="simple-q">Do I need to pay for a server?</p>
+            <p class="simple-a">For testing, no — you can use a free tunnel tool called ngrok to let Canvas talk to your computer directly. For a real live tool, yes — a basic server costs about $5–10 a month, or you can use free tiers on hosting services.</p>
+
+            <p class="simple-q">What if I just want to add a button to Canvas without all this?</p>
+            <p class="simple-a">If your school gives you admin access, you can add a small JavaScript file through the Canvas Theme Editor. It's quicker but less powerful — it can add buttons and popups but Canvas might break it when they update their code.</p>
+
+            <p class="simple-q">What is ltijs?</p>
+            <p class="simple-a">ltijs is a helper library for Node.js that handles all the complicated parts of the LTI handshake for you — like checking the hall pass, managing sessions, and talking to Canvas. Without it, you have to write that code yourself (which the lightweight approach does).</p>
+          </div>
+        </div>
+
+        <!-- One-line summary -->
+        <div class="simple-analogy" style="margin-top:2rem;border-left-color:var(--accent2)">
+          <strong style="color:var(--accent2)">The one-sentence version:</strong> An LTI plugin is a web page you build and host yourself, that Canvas opens in a little window inside a course — and before it opens, Canvas sends your page a secret signed note that says who the student is.
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    Canvas LTI Developer Guide &nbsp;·&nbsp; Section 508 &amp; WCAG 2.1 AA compliant
+  </footer>
+
+</div>
+
+<script>
+/* ── Section tabs (outer nav) ─────────────────────────── */
+(function () {
+  const tabs   = Array.from(document.querySelectorAll('nav[aria-label="Guide sections"] [role="tab"]'));
+  const panels = Array.from(document.querySelectorAll('main > [role="tabpanel"]'));
+  const btnPrev = document.getElementById('tab-arr-prev');
+  const btnNext = document.getElementById('tab-arr-next');
+  const counter = document.getElementById('tab-counter');
+
+  function updateArrows(idx) {
+    btnPrev.disabled = idx === 0;
+    btnNext.disabled = idx === tabs.length - 1;
+    counter.textContent = (idx + 1) + ' / ' + tabs.length;
+    /* Scroll active tab into view inside the scrollable strip */
+    tabs[idx].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  function activateSection(tab) {
+    const idx = tabs.indexOf(tab);
+    tabs.forEach(t => { t.setAttribute('aria-selected','false'); t.setAttribute('tabindex','-1'); });
+    panels.forEach(p => p.classList.remove('active'));
+    tab.setAttribute('aria-selected','true');
+    tab.setAttribute('tabindex','0');
+    tab.focus();
+    document.getElementById(tab.getAttribute('aria-controls')).classList.add('active');
+    updateArrows(idx);
+  }
+
+  btnPrev.addEventListener('click', () => {
+    const cur = tabs.findIndex(t => t.getAttribute('aria-selected') === 'true');
+    if (cur > 0) activateSection(tabs[cur - 1]);
+  });
+
+  btnNext.addEventListener('click', () => {
+    const cur = tabs.findIndex(t => t.getAttribute('aria-selected') === 'true');
+    if (cur < tabs.length - 1) activateSection(tabs[cur + 1]);
+  });
+
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => activateSection(tab));
+    tab.addEventListener('keydown', e => {
+      let next;
+      if (e.key === 'ArrowRight') next = tabs[(i+1) % tabs.length];
+      if (e.key === 'ArrowLeft')  next = tabs[(i-1+tabs.length) % tabs.length];
+      if (e.key === 'Home')       next = tabs[0];
+      if (e.key === 'End')        next = tabs[tabs.length-1];
+      if (next) { e.preventDefault(); activateSection(next); }
+    });
+  });
+
+  /* Initialise arrow state on load */
+  updateArrows(0);
+})();
+
+/* ── File explorer (inner code tabs) ─────────────────── */
+const fileData = {
+  server:    'server',
+  pkg:       'pkg',
+  env:       'env',
+  index:     'index',
+  launch:    'launch',
+  deeplink:  'deeplink',
+  lticonfig: 'lticonfig',
+  readme:    'readme'
+};
+
+function showFile(key) {
+  /* Update sidebar tree buttons */
+  document.querySelectorAll('.tree-item').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed','false');
+  });
+  const treeBtn = document.getElementById('btn-'+key);
+  if (treeBtn) { treeBtn.classList.add('active'); treeBtn.setAttribute('aria-pressed','true'); }
+
+  /* Update pane tabs */
+  document.querySelectorAll('.pane-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected','false');
+    t.setAttribute('tabindex','-1');
+  });
+  const paneTab = document.getElementById('ptab-'+key);
+  if (paneTab) { paneTab.classList.add('active'); paneTab.setAttribute('aria-selected','true'); paneTab.setAttribute('tabindex','0'); }
+
+  /* Show correct file panel */
+  document.querySelectorAll('.code-file').forEach(f => f.classList.remove('active'));
+  const panel = document.getElementById('pfile-'+key);
+  if (panel) panel.classList.add('active');
+}
+
+/* ── Copy to clipboard ────────────────────────────────── */
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+/* ── Canvas stepper ───────────────────────────────────── */
+let currentStep = 0;
+const TOTAL_STEPS = 7;
+
+function goStep(n) {
+  document.getElementById('step-' + currentStep).classList.remove('active');
+  document.querySelectorAll('.step-pip')[currentStep].classList.remove('active');
+
+  currentStep = n;
+
+  document.getElementById('step-' + currentStep).classList.add('active');
+  const pips = document.querySelectorAll('.step-pip');
+  pips.forEach((p, i) => {
+    p.classList.remove('active', 'done');
+    if (i < currentStep) p.classList.add('done');
+    if (i === currentStep) p.classList.add('active');
+  });
+
+  // Update connector lines
+  for (let i = 0; i < TOTAL_STEPS - 1; i++) {
+    const line = document.getElementById('line-' + i + '-' + (i+1));
+    if (line) line.classList.toggle('done', i < currentStep);
+  }
+
+  document.getElementById('step-prev').disabled = currentStep === 0;
+  document.getElementById('step-next').disabled = currentStep === TOTAL_STEPS - 1;
+  document.getElementById('step-counter').textContent = (currentStep + 1) + ' / ' + TOTAL_STEPS;
+  document.getElementById('step-next').textContent = currentStep === TOTAL_STEPS - 2 ? 'Finish \u2713' : 'Next \u2192';
+}
+
+function stepNav(dir) {
+  const next = currentStep + dir;
+  if (next >= 0 && next < TOTAL_STEPS) goStep(next);
+}
+</script>
+</body>
+</html>
